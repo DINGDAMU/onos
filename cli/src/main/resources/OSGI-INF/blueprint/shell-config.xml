@@ -310,6 +310,13 @@
             </optional-completers>
         </command>
         <command>
+            <action class="org.onosproject.cli.AddmmWaveIntentCommand"/>
+            <completers>
+                <ref component-id="hostIdCompleter"/>
+                <ref component-id="hostIdCompleter"/>
+            </completers>
+        </command>
+        <command>
             <action class="org.onosproject.cli.net.AddPointToPointIntentCommand"/>
             <completers>
                 <ref component-id="connectPointCompleter"/>
