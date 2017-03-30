@@ -15,125 +15,27 @@
  */
 package org.onosproject.ofagent.api;
 
-import io.netty.channel.Channel;
-import org.onosproject.net.Port;
-import org.onosproject.net.flow.FlowRule;
-import org.onosproject.net.packet.InboundPacket;
-import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.onosproject.incubator.net.virtual.NetworkId;
+
+import java.util.Set;
 
 /**
- * Service providing OpenFlow switch operations.
+ * Service for providing virtual OpenFlow switch information.
  */
 public interface OFSwitchService {
 
     /**
-     * Handles the switch starts.
-     */
-    void started();
-
-    /**
-     * Handles the switch stops.
-     */
-    void stopped();
-
-    /**
-     * Processes a new port of the switch.
-     * It sends out FEATURE_REPLY message to the controllers.
+     * Returns all openflow switches that OF agent service manages.
      *
-     * @param port virtual port
+     * @return set of openflow switches; empty set if no openflow switches exist
      */
-    void processPortAdded(Port port);
+    Set<OFSwitch> ofSwitches();
 
     /**
-     * Processes port link down.
-     * It sends out PORT_STATUS asynchronous message to the controllers.
+     * Returns all openflow switches for the specified network.
      *
-     * @param port virtual port
+     * @param networkId network id
+     * @return set of openflow switches; empty set if no devices exist on the network
      */
-    void processPortDown(Port port);
-
-    /**
-     * Processes port link down.
-     * It sends out PORT_STATUS asynchronous message to the controllers.
-     *
-     * @param port virtual port
-     */
-    void processPortUp(Port port);
-
-    /**
-     * Processes flow removed.
-     * It sends out FLOW_REMOVED asynchronous message to the controllers.
-     *
-     * @param flowRule removed flow rule
-     */
-    void processFlowRemoved(FlowRule flowRule);
-
-    /**
-     * Processes packet in.
-     * It sends out PACKET_IN asynchronous message to the controllers.
-     *
-     * @param packet inbound packet
-     */
-    void processPacketIn(InboundPacket packet);
-
-    /**
-     * Processes commands from the controllers that modify the state of the switch.
-     * Possible message types include PACKET_OUT, FLOW_MOD, GROUP_MOD,
-     * PORT_MOD, TABLE_MOD. These types of messages can be denied based on a
-     * role of the request controller.
-     *
-     * @param channel received channel
-     * @param msg     command message received
-     */
-    void processControllerCommand(Channel channel, OFMessage msg);
-
-    /**
-     * Processes a stats request from the controllers.
-     * Targeted message type is MULTIPART_REQUEST with FLOW, PORT, GROUP,
-     * GROUP_DESC subtypes.
-     *
-     * @param channel received channel
-     * @param msg     stats request message received
-     */
-    void processStatsRequest(Channel channel, OFMessage msg);
-
-    /**
-     * Processes a role request from the controllers.
-     * Targeted message type is ROLE_REQUEST.
-     *
-     * @param channel received channel
-     * @param msg     role request message received
-     */
-    void processRoleRequest(Channel channel, OFMessage msg);
-
-    /**
-     * Processes a features request from the controllers.
-     *
-     * @param channel received channel
-     * @param msg     received features request
-     */
-    void processFeaturesRequest(Channel channel, OFMessage msg);
-
-    /**
-     * Processes LLDP packets from the controller.
-     *
-     * @param channel received channel
-     * @param msg     packet out message with lldp
-     */
-    void processLldp(Channel channel, OFMessage msg);
-
-    /**
-     * Sends hello to the controller.
-     *
-     * @param channel received channel
-     */
-    void sendOfHello(Channel channel);
-
-    /**
-     * Processes echo request from the controllers.
-     *
-     * @param channel received channel
-     * @param msg     echo request message
-     */
-    void processEchoRequest(Channel channel, OFMessage msg);
+    Set<OFSwitch> ofSwitches(NetworkId networkId);
 }

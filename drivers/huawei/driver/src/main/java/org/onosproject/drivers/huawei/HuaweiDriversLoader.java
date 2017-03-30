@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2017-present Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 
-/*
- ONOS GUI -- Processor View (theme) -- CSS file
+package org.onosproject.drivers.huawei;
+
+import org.apache.felix.scr.annotations.Component;
+import org.onosproject.net.driver.AbstractDriverLoader;
+
+/**
+ * Loader for Huawei device drivers.
  */
-
-.light #ov-processor .current-view use {
-    fill: white;
-}
-.dark #ov-processor .current-view use {
-    fill: #304860;
-}
-
-.light #ov-processor .current-view rect {
-    fill: deepskyblue;
-}
-.dark #ov-processor .current-view rect {
-    fill: #eee;
+@Component(immediate = true)
+public class HuaweiDriversLoader extends AbstractDriverLoader {
+    public HuaweiDriversLoader() {
+        super("/huawei-drivers.xml");
+    }
 }

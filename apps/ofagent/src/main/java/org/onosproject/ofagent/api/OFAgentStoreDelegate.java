@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2017-present Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.onosproject.ofagent.api;
 
-/*
- ONOS GUI -- Port View (theme) -- CSS file
+import org.onosproject.store.StoreDelegate;
+
+/**
+ * OFAgent network store delegate abstraction.
  */
-
+public interface OFAgentStoreDelegate  extends StoreDelegate<OFAgentEvent> {
+}

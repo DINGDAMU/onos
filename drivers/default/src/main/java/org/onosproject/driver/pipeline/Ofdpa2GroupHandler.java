@@ -28,7 +28,6 @@ import org.onlab.packet.MacAddress;
 import org.onlab.packet.MplsLabel;
 import org.onlab.packet.VlanId;
 import org.onosproject.core.ApplicationId;
-import org.onosproject.core.DefaultGroupId;
 import org.onosproject.core.GroupId;
 import org.onosproject.driver.extensions.OfdpaSetVlanVid;
 import org.onosproject.net.DeviceId;
@@ -44,8 +43,10 @@ import org.onosproject.net.flow.criteria.VlanIdCriterion;
 import org.onosproject.net.flow.instructions.Instruction;
 import org.onosproject.net.flow.instructions.Instructions;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction;
+import org.onosproject.net.flowobjective.DefaultNextObjective;
 import org.onosproject.net.flowobjective.FlowObjectiveStore;
 import org.onosproject.net.flowobjective.NextObjective;
+import org.onosproject.net.flowobjective.ObjectiveContext;
 import org.onosproject.net.flowobjective.ObjectiveError;
 import org.onosproject.net.group.DefaultGroupBucket;
 import org.onosproject.net.group.DefaultGroupDescription;
@@ -141,9 +142,9 @@ public class Ofdpa2GroupHandler {
     // index number for group creation
     private AtomicCounter nextIndex;
 
-    // local store for pending bucketAdds - by design there can only be one
+    // local store for pending bucketAdds - by design there can be multiple
     // pending bucket for a group
-    protected ConcurrentHashMap<Integer, NextObjective> pendingBuckets =
+    protected ConcurrentHashMap<Integer, Set<NextObjective>> pendingBuckets =
             new ConcurrentHashMap<>();
 
     /**
@@ -529,7 +530,7 @@ public class Ofdpa2GroupHandler {
             int mplsgroupId = MPLS_INTERFACE_TYPE | (SUBTYPE_MASK & mplsInterfaceIndex);
             final GroupKey mplsgroupkey = new DefaultGroupKey(
                                Ofdpa2Pipeline.appKryo.serialize(mplsInterfaceIndex));
-            outerTtb.group(new DefaultGroupId(l2groupId));
+            outerTtb.group(new GroupId(l2groupId));
             // create the mpls-interface group description to wait for the
             // l2 interface group to be processed
             GroupBucket mplsinterfaceGroupBucket =
@@ -551,7 +552,7 @@ public class Ofdpa2GroupHandler {
             int l3groupId = L3_UNICAST_TYPE | (TYPE_MASK & l3unicastIndex);
             final GroupKey l3groupkey = new DefaultGroupKey(
                                Ofdpa2Pipeline.appKryo.serialize(l3unicastIndex));
-            outerTtb.group(new DefaultGroupId(l2groupId));
+            outerTtb.group(new GroupId(l2groupId));
             // create the l3unicast group description to wait for the
             // l2 interface group to be processed
             GroupBucket l3unicastGroupBucket =
@@ -697,7 +698,7 @@ public class Ofdpa2GroupHandler {
         // assemble info for l2 flood group. Since there can be only one flood
         // group for a vlan, its index is always the same - 0
         Integer l2floodgroupId = L2_FLOOD_TYPE | (vlanId.toShort() << 16);
-        int l2floodgk = getNextAvailableIndex();
+        int l2floodgk = l2FloodGroupKey(vlanId);
         final GroupKey l2floodgroupkey =
                 new DefaultGroupKey(Ofdpa2Pipeline.appKryo.serialize(l2floodgk));
 
@@ -742,6 +743,11 @@ public class Ofdpa2GroupHandler {
         });
     }
 
+    private int l2FloodGroupKey(VlanId vlanId) {
+        int hash = Objects.hash(deviceId, vlanId);
+        return L2_FLOOD_TYPE | TYPE_MASK & hash;
+    }
+
     private void createL3MulticastGroup(NextObjective nextObj, VlanId vlanId,
                                         List<GroupInfo> groupInfos) {
         List<GroupBucket> l3McastBuckets = new ArrayList<>();
@@ -751,7 +757,7 @@ public class Ofdpa2GroupHandler {
             GroupDescription nextGroupDesc = (groupInfo.nextGroupDesc != null) ?
                     groupInfo.nextGroupDesc : groupInfo.innerMostGroupDesc;
             TrafficTreatment.Builder ttb = DefaultTrafficTreatment.builder();
-            ttb.group(new DefaultGroupId(nextGroupDesc.givenGroupId()));
+            ttb.group(new GroupId(nextGroupDesc.givenGroupId()));
             GroupBucket abucket = DefaultGroupBucket.createAllGroupBucket(ttb.build());
             l3McastBuckets.add(abucket);
         });
@@ -830,7 +836,7 @@ public class Ofdpa2GroupHandler {
         for (GroupInfo gi : unsentGroups) {
             // create ECMP bucket to point to the outer group
             TrafficTreatment.Builder ttb = DefaultTrafficTreatment.builder();
-            ttb.group(new DefaultGroupId(gi.nextGroupDesc.givenGroupId()));
+            ttb.group(new GroupId(gi.nextGroupDesc.givenGroupId()));
             GroupBucket sbucket = DefaultGroupBucket
                     .createSelectGroupBucket(ttb.build());
             l3ecmpGroupBuckets.add(sbucket);
@@ -957,7 +963,7 @@ public class Ofdpa2GroupHandler {
                 }
                 l3vpnTtb.pushMpls()
                         .setMpls(innermostLabel)
-                        .group(new DefaultGroupId(onelabelGroupInfo.nextGroupDesc.givenGroupId()));
+                        .group(new GroupId(onelabelGroupInfo.nextGroupDesc.givenGroupId()));
                 if (supportCopyTtl()) {
                     l3vpnTtb.copyTtlOut();
                 }
@@ -1050,6 +1056,8 @@ public class Ofdpa2GroupHandler {
         Set<TrafficTreatment> duplicateBuckets = Sets.newHashSet();
         List<Deque<GroupKey>> allActiveKeys = Ofdpa2Pipeline.appKryo.deserialize(next.data());
         Set<PortNumber> existingPorts = getExistingOutputPorts(allActiveKeys);
+        Set<TrafficTreatment> nonDuplicateBuckets = Sets.newHashSet();
+        NextObjective objectiveToAdd;
 
         nextObjective.next().forEach(trafficTreatment -> {
             PortNumber portNumber = readOutPortFromTreatment(trafficTreatment);
@@ -1060,18 +1068,37 @@ public class Ofdpa2GroupHandler {
 
             if (existingPorts.contains(portNumber)) {
                 duplicateBuckets.add(trafficTreatment);
+            } else {
+                nonDuplicateBuckets.add(trafficTreatment);
             }
         });
 
-        if (!duplicateBuckets.isEmpty()) {
-            log.warn("Some buckets {} already exists in next id {}, abort.",
-                     duplicateBuckets, nextObjective.id());
+        if (duplicateBuckets.isEmpty()) {
+            // use the original objective
+            objectiveToAdd = nextObjective;
+        } else if (!nonDuplicateBuckets.isEmpty()) {
+            // only use the non-duplicate buckets if there are any
+            log.debug("Some buckets {} already exist in next id {}, duplicate "
+                    + "buckets will be ignored.", duplicateBuckets, nextObjective.id());
+            // new next objective with non duplicate treatments
+            NextObjective.Builder builder = DefaultNextObjective.builder()
+                    .withType(nextObjective.type())
+                    .withId(nextObjective.id())
+                    .withMeta(nextObjective.meta())
+                    .fromApp(nextObjective.appId());
+            nonDuplicateBuckets.forEach(builder::addTreatment);
+
+            ObjectiveContext context = nextObjective.context().orElse(null);
+            objectiveToAdd = builder.addToExisting(context);
+        } else {
+            // buckets to add are already there - nothing to do
+            return;
         }
 
         if (nextObjective.type() == NextObjective.Type.HASHED) {
-            addBucketToHashGroup(nextObjective, allActiveKeys);
+            addBucketToHashGroup(objectiveToAdd, allActiveKeys);
         } else if (nextObjective.type() == NextObjective.Type.BROADCAST) {
-            addBucketToBroadcastGroup(nextObjective, allActiveKeys);
+            addBucketToBroadcastGroup(objectiveToAdd, allActiveKeys);
         }
     }
 
@@ -1279,7 +1306,7 @@ public class Ofdpa2GroupHandler {
         groupInfos.forEach(groupInfo -> {
             GroupDescription groupDesc = groupInfo.nextGroupDesc;
             TrafficTreatment.Builder treatmentBuilder = DefaultTrafficTreatment.builder();
-            treatmentBuilder.group(new DefaultGroupId(groupDesc.givenGroupId()));
+            treatmentBuilder.group(new GroupId(groupDesc.givenGroupId()));
             GroupBucket newBucket = null;
             switch (bucketType) {
                 case ALL:
@@ -1322,7 +1349,7 @@ public class Ofdpa2GroupHandler {
             GroupDescription nextGroupDesc = (groupInfo.nextGroupDesc != null) ?
                     groupInfo.nextGroupDesc : groupInfo.innerMostGroupDesc;
             TrafficTreatment.Builder treatmentBuidler = DefaultTrafficTreatment.builder();
-            treatmentBuidler.group(new DefaultGroupId(nextGroupDesc.givenGroupId()));
+            treatmentBuidler.group(new GroupId(nextGroupDesc.givenGroupId()));
             GroupBucket newBucket = DefaultGroupBucket.createAllGroupBucket(treatmentBuidler.build());
             newBuckets.add(newBucket);
         });
@@ -1458,7 +1485,6 @@ public class Ofdpa2GroupHandler {
             return;
         }
 
-
         List<GroupBucket> bucketsToRemove = Lists.newArrayList();
         //first group key is the one we want to modify
         GroupKey modGroupKey = chainsToRemove.get(0).peekFirst();
@@ -1521,15 +1547,14 @@ public class Ofdpa2GroupHandler {
                                             removeBuckets, modGroupKey,
                                             nextObjective.appId());
         // update store
-        // If the bucket removed was the last bucket in the group, then
-        // retain an entry for the top level group which still exists.
-        if (allActiveKeys.size() == 1) {
+        allActiveKeys.removeAll(chainsToRemove);
+        // If no buckets in the group, then retain an entry for the
+        // top level group which still exists.
+        if (allActiveKeys.isEmpty()) {
             ArrayDeque<GroupKey> top = new ArrayDeque<>();
             top.add(modGroupKey);
             allActiveKeys.add(top);
         }
-
-        allActiveKeys.removeAll(chainsToRemove);
         flowObjectiveStore.putNextGroup(nextObjective.id(),
                                         new OfdpaNextGroup(allActiveKeys,
                                                            nextObjective));
@@ -1701,12 +1726,14 @@ public class Ofdpa2GroupHandler {
                                     .givenGroupId()));
                     Ofdpa2Pipeline.pass(nextGrp.nextObjective());
                     flowObjectiveStore.putNextGroup(nextGrp.nextObjective().id(), nextGrp);
+
                     // check if addBuckets waiting for this completion
-                    NextObjective pendBkt = pendingBuckets
-                            .remove(nextGrp.nextObjective().id());
-                    if (pendBkt != null) {
-                        addBucketToGroup(pendBkt, nextGrp);
-                    }
+                    pendingBuckets.compute(nextGrp.nextObjective().id(), (nextId, pendBkts) -> {
+                        if (pendBkts != null) {
+                            pendBkts.forEach(pendBkt -> addBucketToGroup(pendBkt, nextGrp));
+                        }
+                        return null;
+                    });
                 });
             }
         }
@@ -1915,23 +1942,15 @@ public class Ofdpa2GroupHandler {
      * types.
      */
     protected enum OfdpaMplsGroupSubType {
-
         MPLS_INTF((short) 0),
-
         L2_VPN((short) 1),
-
         L3_VPN((short) 2),
-
         MPLS_TUNNEL_LABEL_1((short) 3),
-
         MPLS_TUNNEL_LABEL_2((short) 4),
-
         MPLS_SWAP_LABEL((short) 5),
-
         MPLS_ECMP((short) 8);
 
         private short value;
-
         public static final int OFDPA_GROUP_TYPE_SHIFT = 28;
         public static final int OFDPA_MPLS_SUBTYPE_SHIFT = 24;
 

@@ -25,21 +25,21 @@
 
     var instance;
 
-    function getZoom(z) {
+    function getZoom(z, useCfg) {
         var u = z.usr,
             c = z.cfg;
-        return (u && !u.useCfg) ? u : c;
+        return (u && !u.useCfg && !useCfg) ? u : c;
     }
 
     // returns the pan (offset) values as an array [x, y]
-    function zoomPan(z) {
-        var zoom = getZoom(z);
+    function zoomPan(z, useCfg) {
+        var zoom = getZoom(z, useCfg);
         return [zoom.offsetX, zoom.offsetY];
     }
 
     // returns the scale value
-    function zoomScale(z) {
-        var zoom = getZoom(z);
+    function zoomScale(z, useCfg) {
+        var zoom = getZoom(z, useCfg);
         return zoom.scale;
     }
 
@@ -70,7 +70,8 @@
                         this.zoomData = data.bgZoom;
 
                         var _this = this,
-                            pan = zoomPan(this.zoomData);
+                            pan = zoomPan(this.zoomData),
+                            scale = zoomScale(this.zoomData);
 
                         if (this.bgType === 'geo') {
 
@@ -78,12 +79,12 @@
                             t2sls.hide();
                             t2ms.show();
 
-                            t2ms.setUpMap(data.bgId, data.bgFilePath, zoomScale(data.bgZoom))
+                            t2ms.setUpMap(data.bgId, data.bgFilePath)
                             .then(function (proj) {
                                 t2mcs.projection(proj);
                                 $log.debug('** We installed the projection:', proj);
                                 _this.region.loaded('bgRendered', true);
-                                t2zs.panAndZoom(pan, zoomScale(_this.zoomData), 1000);
+                                t2zs.panAndZoom(pan, scale, 1000);
                             });
                         } else if (this.bgType === 'grid') {
 
@@ -94,7 +95,7 @@
                             t2sls.loadLayout(data.bgId).then(function (spriteLayout) {
                                 _this.background.layout = spriteLayout;
                                 _this.region.loaded('bgRendered', true);
-                                t2zs.panAndZoom(pan, zoomScale(_this.zoomData), 1000);
+                                t2zs.panAndZoom(pan, scale, 1000);
                             });
                         } else {
                             // No background type - Tell the region the background is ready for placing nodes
@@ -108,10 +109,10 @@
                         return this.bgType;
                     },
                     resetZoom: function () {
-                        t2zs.getZoomer().reset();
+                        var pan = zoomPan(this.zoomData, true);
+                        t2zs.panAndZoom(pan, zoomScale(this.zoomData, true), 1000);
                     }
                 });
-
 
                 return instance || new BackgroundView();
             }
