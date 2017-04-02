@@ -1,3 +1,18 @@
+/*
+ * Copyright 2015-present Open Networking Laboratory
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.onosproject.net.intent;
 
 import com.google.common.annotations.Beta;
@@ -78,22 +93,22 @@ public final class MMWaveIntent extends ConnectivityIntent {
         /**
          * Sets the first host of the intent that will be built.
          *
-         * @param one first host
+         * @param hostone first host
          * @return this builder
          */
-        public Builder one(HostId one) {
-            this.one = one;
+        public Builder one(HostId hostone) {
+            this.one = hostone;
             return this;
         }
 
         /**
          * Sets the second host of the intent that will be built.
          *
-         * @param two second host
+         * @param hosttwo second host
          * @return this builder
          */
-        public Builder two(HostId two) {
-            this.two = two;
+        public Builder two(HostId hosttwo) {
+            this.two = hosttwo;
             return this;
         }
 

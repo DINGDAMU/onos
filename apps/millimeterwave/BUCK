@@ -1,0 +1,14 @@
+BUNDLES = [
+    '//apps/millimeterwave/millimeterwavelink:onos-apps-millimeterwave-millimeterwavelink',
+    '//apps/millimeterwave/millimeterwaveport:onos-apps-millimeterwave-millimeterwaveport',
+    '//apps/millimeterwave/mmcli:onos-apps-millimeterwave-mmcli',
+]
+
+onos_app (
+  app_name = 'org.onosproject.millimeterwave',
+  title = 'Millimeter wave App',
+  description = 'ONOS mm-wave application',
+  category = 'Millimeter_wave',
+  url = 'https://wiki.onosproject.org/display/ONOS',
+  included_bundles = BUNDLES,
+)

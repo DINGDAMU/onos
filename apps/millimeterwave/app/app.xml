@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<app name="org.onosproject.millimeterwave" origin="ON.Lab" version="1.10.0-SNAPSHOT"
+        title="Millimeter wave App" category="Monitoring" url="https://wiki.onosproject.org/display/ONOS/"
+        featuresRepo="mvn:org.onosproject/onos-apps-millimeterwave/1.10.0-SNAPSHOT/xml/features"
+        features="onos-apps-millimeterwave" apps="">
+    <description>Millimeter wave App</description>
+    <artifact>mvn:org.onosproject/onos-apps-millimeterwave-millimeterwavelink/1.10.0-SNAPSHOT</artifact>
+    <artifact>mvn:org.onosproject/onos-apps-millimeterwave-millimeterwaveport/1.10.0-SNAPSHOT</artifact>
+    <artifact>mvn:org.onosproject/onos-apps-millimeterwave-mmcli/1.10.0-SNAPSHOT</artifact>
+</app>
