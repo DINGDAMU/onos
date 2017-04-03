@@ -206,6 +206,7 @@ public  class MMwaveLinkProvider extends AbstractProvider
                         log.warn("Link {} has not been added to store, " +
                                          "maybe due to a problem in connectivity", src + "/" + dst);
                     } else {
+                        //Bidirectional annotation
                         LinkDescription description = new DefaultLinkDescription(src, dst, link.type(), annotations);
                         LinkDescription description1 = new DefaultLinkDescription(dst, src, link.type(), annotations);
                         linkProviderService.linkDetected(description);

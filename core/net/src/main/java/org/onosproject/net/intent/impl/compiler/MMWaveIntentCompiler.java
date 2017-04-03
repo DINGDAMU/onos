@@ -23,6 +23,8 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Deactivate;
+import org.onlab.graph.ScalarWeight;
+import org.onlab.graph.Weight;
 import org.onosproject.net.DefaultPath;
 import org.onosproject.net.Path;
 import org.onosproject.net.Host;
@@ -40,7 +42,7 @@ import org.onosproject.net.intent.IntentCompilationException;
 import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.constraint.AsymmetricPathConstraint;
 import org.onosproject.net.intent.IntentExtensionService;
-import org.onosproject.net.topology.LinkWeight;
+import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
 import org.slf4j.Logger;
@@ -64,9 +66,13 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     private final Logger log = getLogger(getClass());
 
     private static final String DEVICE_ID_NOT_FOUND = "Didn't find device id in the link";
+
     private static final int ETHERNET_DEFAULT_COST = 101;
-
-
+    /**
+     * Default weight based on ETHERNET default weight.
+     */
+    public static final ScalarWeight ETHERNET_DEFAULT_WEIGHT =
+            new ScalarWeight(ETHERNET_DEFAULT_COST);
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected HostService hostService;
@@ -114,7 +120,7 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
         for (Link link : path.links()) {
             reverseLinks.add(0, reverseLink(link));
         }
-        return new DefaultPath(path.providerId(), reverseLinks, path.cost());
+        return new DefaultPath(path.providerId(), reverseLinks, path.weight());
     }
 
     // Produces a reverse variant of the specified link.
@@ -196,10 +202,10 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
         // TODO: let's be more intelligent about this eventually
         return paths.iterator().next();
     }
-    class MMwaveLinkWeight implements LinkWeight {
+    class MMwaveLinkWeight implements LinkWeigher {
 
         @Override
-        public double weight(TopologyEdge edge) {
+        public Weight weight(TopologyEdge edge) {
 
             //AnnotationKeys
             //This can help us to define cost function by annotations
@@ -210,16 +216,29 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
 
                 if (v != null) {
                     double ps = getPs(Double.parseDouble(v));
-                    return 1 + 1 / ps;
+                    return  new ScalarWeight(1 + 1 / ps);
                 } else {
-                    return ETHERNET_DEFAULT_COST;
+                    return ETHERNET_DEFAULT_WEIGHT;
                 }
                 //total cost = fixed cost + dynamic cost
                 // In Ethernet case, total cost = 100 + 1; (ps = 1)
                 // In mm-wave case, total cost = 1 + 1/ps;
             } catch (NumberFormatException e) {
-                return 0;
+                return null;
             }
+        }
+
+        @Override
+        public Weight getInitialWeight() {
+            return ETHERNET_DEFAULT_WEIGHT;
+        }
+
+        /**
+         * Weight value for null path (without links).
+         */
+        @Override
+        public Weight getNonViableWeight() {
+            return ScalarWeight.NON_VIABLE_WEIGHT;
         }
     }
     private  double getPs(double d) {
