@@ -34,6 +34,7 @@ import org.onosproject.net.intent.MultiPointToSinglePointIntent;
 import org.onosproject.net.intent.OpticalConnectivityIntent;
 import org.onosproject.net.intent.PathIntent;
 import org.onosproject.net.intent.PointToPointIntent;
+import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.link.LinkService;
 
 import java.util.ArrayList;
@@ -127,6 +128,9 @@ public class TopoIntentFilter {
                             isIntentRelevantToDevices(intent, devices) && isIntentRelevantToLinks(intent, links);
                 } else if (intent instanceof OpticalConnectivityIntent) {
                     opticalIntents.add((OpticalConnectivityIntent) intent);
+                } else if (intent instanceof  MMWaveIntent) {
+                    isRelevant = isIntentRelevantToMMWaveHosts((MMWaveIntent) intent, hosts) &&
+                            isIntentRelevantToDevices(intent, devices) && isIntentRelevantToLinks(intent, links);
                 }
                 // TODO: add other intents, e.g. SinglePointToMultiPointIntent
 
@@ -149,6 +153,18 @@ public class TopoIntentFilter {
 
     // Indicates whether the specified intent involves all of the given hosts.
     private boolean isIntentRelevantToHosts(HostToHostIntent intent, Iterable<Host> hosts) {
+        for (Host host : hosts) {
+            HostId id = host.id();
+            // Bail if intent does not involve this host.
+            if (!id.equals(intent.one()) && !id.equals(intent.two())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Indicates whether the specified intent involves all of the given hosts in the mm-wave case.
+    private boolean isIntentRelevantToMMWaveHosts(MMWaveIntent intent, Iterable<Host> hosts) {
         for (Host host : hosts) {
             HostId id = host.id();
             // Bail if intent does not involve this host.

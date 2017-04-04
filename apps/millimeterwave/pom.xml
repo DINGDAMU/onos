@@ -32,6 +32,7 @@
         <module>millimeterwavelink</module>
         <module>millimeterwaveport</module>
         <module>mmcli</module>
+        <module>millimeterwavegui</module>
         <module>app</module>
     </modules>
 

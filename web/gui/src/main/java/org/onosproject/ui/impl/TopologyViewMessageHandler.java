@@ -49,13 +49,14 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.host.HostEvent;
 import org.onosproject.net.host.HostListener;
-import org.onosproject.net.intent.HostToHostIntent;
+import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.Intent;
-import org.onosproject.net.intent.IntentEvent;
-import org.onosproject.net.intent.IntentListener;
-import org.onosproject.net.intent.Key;
-import org.onosproject.net.intent.MultiPointToSinglePointIntent;
+import org.onosproject.net.intent.HostToHostIntent;
 import org.onosproject.net.intent.IntentService;
+import org.onosproject.net.intent.MultiPointToSinglePointIntent;
+import org.onosproject.net.intent.IntentListener;
+import org.onosproject.net.intent.IntentEvent;
+import org.onosproject.net.intent.Key;
 import org.onosproject.net.intent.IntentState;
 import org.onosproject.net.link.LinkEvent;
 import org.onosproject.net.link.LinkListener;
@@ -102,6 +103,7 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
     private static final String REQ_DETAILS = "requestDetails";
     private static final String UPDATE_META = "updateMeta";
     private static final String ADD_HOST_INTENT = "addHostIntent";
+    private static final String ADD_MMWAVE_INTENT = "addMMWaveIntent";
     private static final String REMOVE_INTENT = "removeIntent";
     private static final String REMOVE_INTENTS = "removeIntents";
     private static final String RESUBMIT_INTENT = "resubmitIntent";
@@ -229,6 +231,7 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
 
                 // TODO: migrate traffic related to separate app
                 new AddHostIntent(),
+                new AddMMWaveIntent(),
                 new AddMultiSourceIntent(),
                 new RemoveIntent(),
                 new ResubmitIntent(),
@@ -430,12 +433,36 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
         }
     }
 
+    private final class AddMMWaveIntent extends RequestHandler {
+        private AddMMWaveIntent() {
+            super(ADD_MMWAVE_INTENT);
+        }
+
+        @Override
+        public void process(ObjectNode payload) {
+            // TODO: add protection against device ids and non-existent hosts.
+            HostId one = hostId(string(payload, ONE));
+            HostId two = hostId(string(payload, TWO));
+
+            MMWaveIntent intent = MMWaveIntent.builder()
+                    .appId(appId)
+                    .one(one)
+                    .two(two)
+                    .build();
+
+            intentService.submit(intent);
+            if (overlayCache.isActive(TrafficOverlay.TRAFFIC_ID)) {
+                traffic.monitor(intent);
+            }
+        }
+    }
+
     private Intent findIntentByPayload(ObjectNode payload) {
         Intent intent;
         Key key;
-        int appId = Integer.parseInt(string(payload, APP_ID));
+        int appid = Integer.parseInt(string(payload, APP_ID));
         String appName = string(payload, APP_NAME);
-        ApplicationId applicId = new DefaultApplicationId(appId, appName);
+        ApplicationId applicId = new DefaultApplicationId(appid, appName);
         String stringKey = string(payload, KEY);
         try {
             // FIXME: If apps use different string key, but they contains
@@ -637,7 +664,8 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
 
         @Override
         public void process(ObjectNode payload) {
-            traffic.monitor(Mode.SELECTED_INTENT);
+            traffic.monitor(Mode.
+                    SELECTED_INTENT);
         }
     }
 

@@ -21,16 +21,17 @@ import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.NetworkResource;
 import org.onosproject.net.flow.criteria.Criterion;
 import org.onosproject.net.flow.instructions.Instruction;
-import org.onosproject.net.intent.ConnectivityIntent;
-import org.onosproject.net.intent.Constraint;
-import org.onosproject.net.intent.HostToHostIntent;
+import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.Intent;
-import org.onosproject.net.intent.IntentService;
-import org.onosproject.net.intent.LinkCollectionIntent;
-import org.onosproject.net.intent.MultiPointToSinglePointIntent;
-import org.onosproject.net.intent.PathIntent;
+import org.onosproject.net.intent.HostToHostIntent;
 import org.onosproject.net.intent.PointToPointIntent;
+import org.onosproject.net.intent.IntentService;
+import org.onosproject.net.intent.ConnectivityIntent;
+import org.onosproject.net.intent.PathIntent;
+import org.onosproject.net.intent.MultiPointToSinglePointIntent;
 import org.onosproject.net.intent.SinglePointToMultiPointIntent;
+import org.onosproject.net.intent.LinkCollectionIntent;
+import org.onosproject.net.intent.Constraint;
 import org.onosproject.ui.RequestHandler;
 import org.onosproject.ui.UiMessageHandler;
 import org.onosproject.ui.table.CellFormatter;
@@ -160,6 +161,8 @@ public class IntentViewMessageHandler extends UiMessageHandler {
                 if (intent instanceof HostToHostIntent) {
                     buildHostToHostDetails((HostToHostIntent) intent, sb);
 
+                } else if (intent instanceof MMWaveIntent) {
+                    buildMMWaveDetails((MMWaveIntent) intent, sb);
                 } else if (intent instanceof PointToPointIntent) {
                     buildPointToPointDetails((PointToPointIntent) intent, sb);
 
@@ -216,6 +219,13 @@ public class IntentViewMessageHandler extends UiMessageHandler {
                 sb.append(" Host 1: ")
                         .append(intent.one())
                         .append(", Host 2: ")
+                        .append(intent.two());
+            }
+
+            private void buildMMWaveDetails(MMWaveIntent intent, StringBuilder sb) {
+                sb.append("Host 1:")
+                        .append(intent.one())
+                        .append(",Host2:")
                         .append(intent.two());
             }
 

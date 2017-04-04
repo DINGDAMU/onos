@@ -32,6 +32,7 @@ import org.onosproject.net.flow.instructions.Instructions.OutputInstruction;
 import org.onosproject.net.intent.FlowObjectiveIntent;
 import org.onosproject.net.intent.FlowRuleIntent;
 import org.onosproject.net.intent.HostToHostIntent;
+import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.OpticalConnectivityIntent;
@@ -595,7 +596,14 @@ public class TrafficMonitor extends AbstractTopoMonitor {
 
     private Iterable<Link> addEdgeLinksIfNeeded(Intent parentIntent,
                                                 Collection<Link> links) {
-        if (parentIntent instanceof HostToHostIntent) {
+        if (parentIntent instanceof MMWaveIntent) {
+            links = new HashSet<>(links);
+            MMWaveIntent h2h = (MMWaveIntent) parentIntent;
+            Host h1 = servicesBundle.hostService().getHost(h2h.one());
+            Host h2 = servicesBundle.hostService().getHost(h2h.two());
+            links.add(createEdgeLink(h1, true));
+            links.add(createEdgeLink(h2, true));
+        } else if (parentIntent instanceof HostToHostIntent) {
             links = new HashSet<>(links);
             HostToHostIntent h2h = (HostToHostIntent) parentIntent;
             Host h1 = servicesBundle.hostService().getHost(h2h.one());
