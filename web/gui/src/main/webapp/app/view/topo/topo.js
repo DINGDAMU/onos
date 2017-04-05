@@ -380,10 +380,10 @@
         return ps.getPrefs(
             'topo_mapid',
             {
-                mapid: 'usa',
-                mapscale: 1,
-                mapfilepath: '*continental_us',
-                tint: 'off'
+                mapid: 'italy',
+                mapscale: 0.8,
+                mapfilepath: '*italy',
+                tint: 'on'
             },
             $loc.search()
         );
