@@ -1,31 +1,16 @@
 # Millimeterwave_onos_app
-A millimeterwave application based on onos
+A millimeterwave application based on ONOS
 
 <img src="https://wiki.onosproject.org/download/attachments/9307113/HOW%20TO_%20Provider%2C%20protocol%2C%20driver%20-%20Outline-2.png?version=1&modificationDate=1461960381812&api=v2" width="50%" height="50%" />  
 
-# Prerequisites
-- Java 8 JDK (Oracle Java recommended; OpenJDK is not as thoroughly tested)
-- Apache Maven 3.3.9
-- git
-- bash (for packaging & testing)
-- Apache Karaf 3.0.5
-- ONOS (git clone https://gerrit.onosproject.org/onos)  
------>More information you can find [here](https://wiki.onosproject.org/display/ONOS/Installing+and+Running+ONOS)
+
 
 
 # Installation 
-    git clone https://github.com/DINGDAMU/millimeterwave-onos-app.git
-    cd millimeterwave-onos-app
-    mvn clean install
-    cd cli
-    mvn clean install
-    onos-app localhost reinstall! target/*.oar
-    cd ../millimeterwavelink
-    mvn clean install 
-    onos-app localhost reinstall! target/*.oar
-    cd ../millimeterwaveport
-    mvn clean install 
-    onos-app localhost reinstall! target/*.oar
+BUCK will help us to automatically install it in ONOS.
+
+# Activation
+    onos>app activate org.onosproject.millimeterwave
 
     
  
