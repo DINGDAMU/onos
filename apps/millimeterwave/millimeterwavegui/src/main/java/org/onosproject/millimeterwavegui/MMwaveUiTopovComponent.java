@@ -13,53 +13,62 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.onosproject.mmwavegui;
+package org.onosproject.millimeterwavegui;
 
-
-import org.apache.felix.scr.annotations.Component;
 import com.google.common.collect.ImmutableList;
 import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.onosproject.ui.UiExtension;
 import org.onosproject.ui.UiExtensionService;
 import org.onosproject.ui.UiMessageHandlerFactory;
+import org.onosproject.ui.UiTopoOverlayFactory;
 import org.onosproject.ui.UiView;
+import org.onosproject.ui.UiViewHidden;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 /**
- * Skeletal ONOS UI Custom-View application component.
+ * Skeletal ONOS UI Topology-Overlay application component.
  */
 @Component(immediate = true)
-public class AppUiComponent {
+public class MMwaveUiTopovComponent {
 
-    private static final String VIEW_ID = "sampleCustom";
-    private static final String VIEW_TEXT = "Sample Custom";
+    private static final ClassLoader CL = MMwaveUiTopovComponent.class.getClassLoader();
+    private static final String VIEW_ID = "mmwaveTopov";
 
-    private final org.slf4j.Logger log = LoggerFactory.getLogger(getClass());
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected UiExtensionService uiExtensionService;
 
     // List of application views
     private final List<UiView> uiViews = ImmutableList.of(
-            new UiView(UiView.Category.OTHER, VIEW_ID, VIEW_TEXT)
+            new UiViewHidden(VIEW_ID)
     );
 
     // Factory for UI message handlers
     private final UiMessageHandlerFactory messageHandlerFactory =
             () -> ImmutableList.of(
-                    new AppUiMessageHandler()
+                    new MMwaveUiTopovMessageHandler()
+            );
+
+    // Factory for UI topology overlays
+    private final UiTopoOverlayFactory topoOverlayFactory =
+            () -> ImmutableList.of(
+                    new MMwaveUiTopovOverlay()
             );
 
     // Application UI extension
     protected UiExtension extension =
-            new UiExtension.Builder(getClass().getClassLoader(), uiViews)
+            new UiExtension.Builder(CL, uiViews)
                     .resourcePath(VIEW_ID)
                     .messageHandlerFactory(messageHandlerFactory)
+                    .topoOverlayFactory(topoOverlayFactory)
                     .build();
 
     @Activate

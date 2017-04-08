@@ -42,7 +42,7 @@ BUCK will help us to automatically install it in ONOS.
     onos>mmwave-hosts-path <source hostID> <source hostID>
 In our case, the cost depends from the annotation value "probablity of success".  
 total cost = fixed cost + dynamic cost  
-In Ethernet case, total cost = 100 + 1; (ps = 100)  
+In Ethernet case, total cost = 100 + 1; (ps = 100%)  
 In mm-wave case, total cost = 1 + 1/(ps/100);  
 
 ## Add mm-wave intents  
@@ -75,7 +75,17 @@ Add the intent between host1 and host2, the path will be the shortest path which
      }
     }
 ### Configuration  
-     onos>onos-netcfg <ONOS's address> <path to JSON>
+     onos>onos-netcfg <ONOS's address> <path to JSON>  
+     
+### MM-wave Topo overlay on WEB GUI
+- Start display mode: Highlight millimeter wave links in green color.
+- Cancel display mode: No more highlight millimeter wave links.
+- Show all related intents
+- Show previous related intent
+- Show next related intent
+- Monitor traffic of selected intent
+
+In addition, the number of mm-wave and Ethernet links will be shown on the Summary panel.
 
 # License
 Copyright -present Open Networking Laboratory

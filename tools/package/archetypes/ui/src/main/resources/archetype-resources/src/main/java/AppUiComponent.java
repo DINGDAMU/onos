@@ -39,8 +39,8 @@ import java.util.List;
 @Component(immediate = true)
 public class AppUiComponent {
 
-    private static final String VIEW_ID = "sampleCustom";
-    private static final String VIEW_TEXT = "Sample Custom";
+    private static final String VIEW_ID = "mmwaveCustom";
+    private static final String VIEW_TEXT = "MMWave Custom";
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 

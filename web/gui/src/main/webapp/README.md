@@ -36,7 +36,7 @@ from an external forlder that can be specified with:
 `ONOS_EXTERNAL_APP_DIRS="appName:path-to-the-first-folder" npm start`
 
 Eg:
-`ONOS_EXTERNAL_APP_DIRS="sampleCustom:../../meow/sample/meowster-sample/" npm start`
+`ONOS_EXTERNAL_APP_DIRS="mmwaveCustom:../../meow/sample/meowster-sample/" npm start`
 
 _Note that `ONOS_EXTERNAL_APP_DIRS` is an environment variable,so it can be set with_
-_`export ONOS_EXTERNAL_APP_DIRS="sampleCustom:../../meow/sample/meowster-sample/"`_
+_`export ONOS_EXTERNAL_APP_DIRS="mmwaveCustom:../../meow/sample/meowster-sample/"`_

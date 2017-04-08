@@ -5,6 +5,7 @@ ONOS : Open Network Operating System
     onos>mmwave-add-intent <TAB><source hostID> <TAB><destination hostID>  
 
 According the annotated "probability of success", build the mm-wave intent with the shortest cost between two hosts.  
+The related path will be shown in yellow color on WEB GUI.  
 
 ## New Application:
     onos>app activate org.onosproject.millimeterwave  

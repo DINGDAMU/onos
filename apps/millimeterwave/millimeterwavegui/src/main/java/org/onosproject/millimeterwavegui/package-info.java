@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /**
- * mm-wave on web gui.
+ * Web gui on millimeter wave links.
  */
 
-package org.onosproject.mmwavegui;
+package org.onosproject.millimeterwavegui;

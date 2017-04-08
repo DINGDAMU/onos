@@ -383,7 +383,7 @@
                 mapid: 'italy',
                 mapscale: 0.8,
                 mapfilepath: '*italy',
-                tint: 'on'
+                tint: 'off'
             },
             $loc.search()
         );
