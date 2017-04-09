@@ -56,7 +56,7 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
     private static final ButtonId FOO_BUTTON = new ButtonId("foo");
     private static final ButtonId BAR_BUTTON = new ButtonId("bar");
 
-    int mmwavelinknum ;
+    int mmwavelinknum;
     int ethernetlinknum;
 
 

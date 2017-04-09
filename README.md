@@ -14,3 +14,14 @@ For more details, please read the README.md in $ONOS/apps/millimeterwave.
 ## Modifications:
 
 - The default map of ONOS GUI is changed into 'Italy'.  
+
+## How to add a new intent:  
+
+### MMwaveIntent:  
+
+-  New **MMWaveIntent** class in core-api-net
+-  New **MMWaveIntentCompiler** class in net-net-intent-impl-compiler
+-  Register **MMWaveIntent** class in store-serializers-KryoNamespaces
+-  Add EdgeLink's support for mm-wave intent type in Traffic monitor.java 
+-  Add isIntentRelevantToMMWaveHosts() method for mm-wave intent's highlight on Web GUI in TopoIntentFilter.java 
+
