@@ -78,7 +78,7 @@
             K: {
                 cb: function () { mtds.startDisplay(); },
                 tt: 'Start Display Mode',
-                gid: '*mmwaveIcon'
+                gid: 'microwave'
             },
             V: {
                 cb: function () { tts.showRelatedIntents(); },

@@ -224,6 +224,7 @@
         // display the selected nodes in the detail panel
         tps.displayMulti(selectOrder);
         addHostSelectionActions();
+        addMMwaveHostSelectionActions();
         tov.hooks.multiSelect(selectOrder);
         tps.displaySomething();
     }
@@ -247,7 +248,18 @@
             }
         }
     }
-
+    function addMMwaveHostSelectionActions() {
+        if (allSelectionsClass('host')) {
+            if (nSel() === 2) {
+                tps.addAction({
+                    id: 'host-flow-btn',
+                    gid: 'microwave',
+                    cb: tts.addMMWaveIntent,
+                    tt: 'Create MM-Wave Flow'
+                });
+            }
+        }
+    }
 
     // === -----------------------------------------------------
     //  Event Handlers

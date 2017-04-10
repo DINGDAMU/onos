@@ -177,6 +177,17 @@
         hoverMode = null;
         flash.flash('Host-to-Host flow added');
     }
+    function addMMWaveIntent () {
+        var so = api.selectOrder();
+        wss.sendEvent('addMMWaveIntent', {
+            one: so[0],
+            two: so[1],
+            ids: so
+        });
+        trafficMode = 'intents';
+        hoverMode = null;
+        flash.flash('Millimeter wave intent flow added');
+    }
 
     function removeIntent (d) {
         $log.debug('Entering removeIntent');
@@ -260,6 +271,7 @@
                 // TODO: these should move to new UI demo app
                 // invoked from buttons on detail (multi-select) panel
                 addHostIntent: addHostIntent,
+                addMMWaveIntent : addMMWaveIntent,
                 addMultiSourceIntent: addMultiSourceIntent,
                 removeIntent: removeIntent,
                 resubmitIntent: resubmitIntent,
