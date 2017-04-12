@@ -24,4 +24,5 @@ For more details, please read the README.md in $ONOS/apps/millimeterwave.
 -  Register **MMWaveIntent** class in store-serializers-KryoNamespaces
 -  Add EdgeLink's support for mm-wave intent type in **Traffic monitor.java** 
 -  Add isIntentRelevantToMMWaveHosts() method for mm-wave intent's highlight on Web GUI in **TopoIntentFilter.java** 
+-  Add AddMMWaveIntent() method for message handler in **TopologyViewMessageHandler.java**
 -  Add Related method for mm-wave intents in **topoTraffic.js** and **topoSelect.js** so that the mm-wave intent can be created on WEB GUI directly.

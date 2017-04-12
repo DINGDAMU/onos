@@ -125,7 +125,31 @@
             mouseout: function () {
                 $log.debug('mouseout');
                 mtds.updateDisplay();
+            },
+            modifylinkdata: function (data, extra) {
+                $log.debug("Modify link data", data, extra);
+
+                // delete unwanted props (if any) by removing elements
+                //   from data.propOrder array first
+
+                function sep() {
+                    data.propOrder.push('-');
+                }
+
+                function add(key) {
+                    var val = extra[key];
+                    if (val !== undefined) {
+                        data.propOrder.push(key);
+                        data.props[key] = val;
+                    }
+                }
+                sep();
+                add('Technology');
+                add('Length');
+                add('Capacity');
+                return data;
             }
+
         }
     };
 

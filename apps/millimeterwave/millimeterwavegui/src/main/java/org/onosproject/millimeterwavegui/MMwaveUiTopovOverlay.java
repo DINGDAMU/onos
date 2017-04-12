@@ -17,6 +17,7 @@ package org.onosproject.millimeterwavegui;
 
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
+import org.onosproject.net.link.LinkEvent;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.ui.UiTopoOverlay;
 import org.onosproject.ui.topo.ButtonId;
@@ -25,7 +26,9 @@ import org.onosproject.ui.topo.TopoConstants.CoreButtons;
 import org.onosproject.ui.GlyphConstants;
 
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static org.onosproject.cli.AbstractShellCommand.get;
@@ -107,6 +110,29 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
     }
 
 
+    @Override
+    public Map<String, String> additionalLinkData(LinkEvent event) {
+        Map<String, String> additional = new HashMap<>();
+        Link link = event.subject();
+        if (link.annotations().value("length") != null) {
+            additional.put("Length", link.annotations().value("length") + "m");
+        } else {
+            additional.put("Length", "default");
+        }
+        if (link.annotations().value("technology") != null) {
+            additional.put("Technology", link.annotations().value("technology"));
+        } else {
+            additional.put("Technology", "Ethernet");
+        }
+
+        if (link.annotations().value("capacity") != null) {
+            additional.put("Capacity", link.annotations().value("capacity"));
+        } else {
+            additional.put("Capacity", "default");
+        }
+        return additional;
+
+    }
 
 
 
