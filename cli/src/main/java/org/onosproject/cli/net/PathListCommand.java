@@ -38,17 +38,17 @@ import static org.onosproject.net.DeviceId.deviceId;
  * destination devices.
  */
 @Command(scope = "onos", name = "paths",
-         description = "Lists all shortest-paths paths between the specified source and destination devices")
+        description = "Lists all shortest-paths paths between the specified source and destination devices")
 public class PathListCommand extends TopologyCommand {
 
     private static final String SEP = "==>";
 
     @Argument(index = 0, name = "src", description = "Source device ID",
-              required = true, multiValued = false)
+            required = true, multiValued = false)
     String src = null;
 
     @Argument(index = 1, name = "dst", description = "Destination device ID",
-              required = true, multiValued = false)
+            required = true, multiValued = false)
     String dst = null;
 
     @Option(name = "--disjoint", description = "Show disjoint Paths")
@@ -107,8 +107,8 @@ public class PathListCommand extends TopologyCommand {
                 // [ (primay), (backup), ...]
                 DisjointPath backup = (DisjointPath) path;
                 result.add(LinksListCommand.json(context, backup.backup())
-                           .put("cost", backup.cost())
-                           .set("links", LinksListCommand.json(context, backup.links())));
+                        .put("cost", backup.cost())
+                        .set("links", LinksListCommand.json(context, backup.links())));
             }
         }
         return result;

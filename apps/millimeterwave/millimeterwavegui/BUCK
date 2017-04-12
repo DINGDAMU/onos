@@ -3,6 +3,8 @@ COMPILE_DEPS = [
     '//lib:org.apache.karaf.shell.console',
     '//incubator/api:onos-incubator-api',
     '//cli:onos-cli',
+    '//lib:commons-math3',
+
 ]
 
 osgi_jar_with_tests (

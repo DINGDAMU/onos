@@ -147,6 +147,8 @@
                 add('Technology');
                 add('Length');
                 add('Capacity');
+                add('Packet_loss');
+
                 return data;
             }
 

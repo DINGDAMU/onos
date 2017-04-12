@@ -20,12 +20,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
+import org.onlab.graph.ScalarWeight;
+import org.onlab.graph.Weight;
 import org.onosproject.cli.AbstractShellCommand;
 import org.onosproject.cli.net.LinksListCommand;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
-import org.onosproject.net.topology.LinkWeight;
+import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
 
@@ -37,6 +39,12 @@ import static org.onosproject.cli.net.LinksListCommand.compactLinkString;
         description = "calculate shortest path betweeen devices with own customized link weight")
 public class MMWavePathsDevicesCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
+    public static final int ETHERNET_DEFAULT_COST = 101;
+    /**
+     * Default weight based on ETHERNET default weight.
+     */
+    public static final ScalarWeight ETHERNET_DEFAULT_WEIGHT =
+            new ScalarWeight(ETHERNET_DEFAULT_COST);
     @Argument(index = 0, name = "src", description = "Source device ID",
             required = true, multiValued = false)
     String srcArg = null;
@@ -85,8 +93,9 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode result = mapper.createArrayNode();
         for (Path path : paths) {
+            Weight cost = path.weight();
             result.add(LinksListCommand.json(context, path)
-                               .put("cost", path.cost())
+                               .put("cost", ((ScalarWeight) cost).value())
                                .set("links", LinksListCommand.json(context, path.links())));
         }
         return result;
@@ -104,14 +113,15 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
             sb.append(compactLinkString(link)).append(SEP);
         }
         sb.delete(sb.lastIndexOf(SEP), sb.length());
-        sb.append("; cost=").append(path.cost());
+        Weight cost = path.weight();
+        sb.append("; cost=").append(((ScalarWeight) cost).value());
         return sb.toString();
     }
 
-    class MMwaveLinkWeight implements LinkWeight {
+    class MMwaveLinkWeight implements LinkWeigher {
 
         @Override
-        public double weight(TopologyEdge edge) {
+        public Weight weight(TopologyEdge edge) {
 
             //AnnotationKeys
             //This can help us to define cost function by annotations
@@ -123,16 +133,29 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
                 if (v != null) {
                     Psuccess psuccess = new Psuccess();
                     double ps = psuccess.getPs(Double.parseDouble(v));
-                    return 1 + 1 / ps;
+                    return new ScalarWeight(1 + 1 / ps);
                 } else {
-                    return 101;
+                    return ETHERNET_DEFAULT_WEIGHT;
                 }
                 //total cost = fixed cost + dynamic cost
                 // In Ethernet case, total cost = 100 + 1; (ps = 1)
                 // In mm-wave case, total cost = 1 + 1/ps;
             } catch (NumberFormatException e) {
-                return 0;
+                return null;
             }
+        }
+
+        @Override
+        public Weight getInitialWeight() {
+            return ETHERNET_DEFAULT_WEIGHT;
+        }
+
+        /**
+         * Weight value for null path (without links).
+         */
+        @Override
+        public Weight getNonViableWeight() {
+            return ScalarWeight.NON_VIABLE_WEIGHT;
         }
     }
 }

@@ -44,9 +44,7 @@ import java.util.Set;
 
 import static org.onosproject.cli.net.LinksListCommand.compactLinkString;
 
-/**
- * Created by dingdamu on 2017/3/17.
- */
+
 @Command(scope = "onos", name = "mmwave-hosts-paths",
         description = "calculate shortest path between hosts with own customized link weight")
 public class MMWaveHostsPathsCommand extends AbstractShellCommand {
@@ -163,7 +161,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                     return ETHERNET_DEFAULT_WEIGHT;
                 }
                 //total cost = fixed cost + dynamic cost
-                // In Ethernet case, total cost = 100 + 1; (ps = 1)
+                // In Ethernet case, total cost = 100 + 1; (ps = 100%)
                 // In mm-wave case, total cost = 1 + 1/ps;
             } catch (NumberFormatException e) {
                 return null;

@@ -1,31 +1,16 @@
-/*
- * Copyright 2015-present Open Networking Laboratory
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package org.onosproject.mmcli;
+package org.onosproject.millimeterwavegui;
 
 import org.apache.commons.math3.special.Erf;
 
-public final  class Psuccess {
+public final class Psuccess {
 
     public  double getPs(double d) {
         double pl = 0.0;
         double alpha = 0.0;  //dB
         double beta = 0.0;
-        double sigma;   //dB
-        double sigmaLin;
-        double xsiLin;
+        double sigma = 0.0;   //dB
+        double sigmaLin = 0.0;
+        double xsiLin = 0.0;
         double xsi = 0.0;
         double fc;
         String plModel = "28";
