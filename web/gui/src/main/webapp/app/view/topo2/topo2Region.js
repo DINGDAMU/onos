@@ -36,9 +36,9 @@
         '$log', 'Topo2Model', 'Topo2SubRegionService', 'Topo2DeviceService',
         'Topo2HostService', 'Topo2LinkService', 'Topo2ZoomService', 'Topo2DetailsPanelService',
         'Topo2BreadcrumbService', 'Topo2ViewController', 'Topo2SpriteLayerService', 'Topo2MapService',
-        'Topo2MapConfigService', 'Topo2PeerRegionService',
+        'Topo2MapConfigService', 'Topo2PeerRegionService', 'Topo2NoDevicesConnectedService',
         function ($log, _Model_, t2sr, t2ds, t2hs, t2ls, t2zs, t2dps, t2bcs, ViewController,
-                  t2sls, t2ms, t2mcs, t2pr) {
+                  t2sls, t2ms, t2mcs, t2pr, t2ndcs) {
 
             Model = _Model_;
 
@@ -57,6 +57,15 @@
                     });
 
                     this.model = new RegionModel();
+                    this.createEmptyModel();
+
+                },
+                createEmptyModel: function () {
+                    this.model.set({ subregions: t2sr.createSubRegionCollection([], this) });
+                    this.model.set({ devices: t2ds.createDeviceCollection([], this) });
+                    this.model.set({ hosts: t2hs.createHostCollection([], this) });
+                    this.model.set({ peerRegions: t2pr.createCollection([], this) });
+                    this.model.set({ links: t2ls.createLinkCollection([], this) });
                 },
                 isLoadComplete: function() {
                     return this.bgRendered && this.regionData && this.peers;
@@ -68,8 +77,6 @@
                     }
                 },
                 startRegion: function () {
-
-                    var _this = this;
 
                     this.model.set({
                         id: this.regionData.id,
@@ -88,13 +95,11 @@
                     }
 
                     this.layout.createForceLayout();
+                    this.displayNoDevs();
                 },
                 clear: function () {
-
                     this.regionData = null;
-
-                    if (!this.model)
-                        return;
+                    this.createEmptyModel();
                 },
                 isRootRegion: function () {
                     return this.model.get('id') === ROOT;
@@ -151,7 +156,6 @@
                     return false;
                 },
                 deselectLink: function () {
-                    console.log('remove link')
                     var selected = _.filter(this.regionLinks(), function (link) {
                         return link.get('selected', true);
                     });
@@ -168,8 +172,23 @@
 
                     return false;
                 },
+                toggleHosts: function () {
+                    var state = this.lookupPrefState('hosts');
+                    this.updatePrefState('hosts', !state);
 
+                    _.each(this.model.get('hosts').models, function (host) {
+                        host.setVisibility();
+                    });
+
+                    _.each(this.model.get('links').models, function (link) {
+                        link.setVisibility();
+                    });
+                },
                 update: function (event) {
+
+                    if (!this.isLoadComplete()){
+                        this.layout.createForceLayout();
+                    }
 
                     if (this[event.type]) {
                         this[event.type](event);
@@ -178,13 +197,30 @@
                     }
 
                     this.layout.update()
+                    this.displayNoDevs();
+                },
+                displayNoDevs: function () {
+                    if (this.regionNodes().length > 0) {
+                        t2ndcs.hide();
+                    } else {
+                        t2ndcs.show();
+                    }
                 },
 
                 // Topology update event handlers
                 LINK_ADDED_OR_UPDATED: function (event) {
+
+                    var regionLinks = this.model.get('links'),
+                        device;
+
+                    if (!regionLinks) {
+                        this.model.set({ links: t2ls.createLinkCollection([], this) })
+                    }
+
                     if (event.memo === 'added') {
                         var link = this.model.get('links').add(event.data);
                         link.createLink();
+                        $log.debug('Added Link', link);
                     }
                 },
                 LINK_REMOVED: function (event) {
@@ -194,7 +230,12 @@
                 },
                 DEVICE_ADDED_OR_UPDATED: function (event) {
 
-                    var device;
+                    var regionDevices = this.model.get('devices'),
+                        device;
+
+                    if (!regionDevices) {
+                        this.model.set({ devices: t2ds.createDeviceCollection([], this) })
+                    }
 
                     if (event.memo === 'added') {
                         device = this.model.get('devices').add(event.data);
@@ -206,6 +247,32 @@
                 },
                 DEVICE_REMOVED: function (event) {
                     device.remove();
+                },
+                HOST_ADDED_OR_UPDATED: function (event) {
+                    var regionHosts = this.model.get('hosts'),
+                        host;
+
+                    if (!regionHosts) {
+                        this.model.set({ hosts: t2hs.createHostCollection([], this) })
+                    }
+
+                    if (event.memo === 'added') {
+                        host = this.model.get('hosts').add(event.data);
+                        $log.debug('Added host', host);
+                    }
+                },
+                REGION_ADDED_OR_UPDATED: function (event) {
+                    var regionSubRegions = this.model.get('subregions'),
+                        region;
+
+                    if (!regionSubRegions) {
+                        this.model.set({ subregions: t2sr.createSubRegionCollection([], this) })
+                    }
+
+                    if (event.memo === 'added') {
+                        region = this.model.get('subregions').add(event.data);
+                        $log.debug('Added region', region);
+                    }
                 }
             });
 

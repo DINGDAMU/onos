@@ -15,6 +15,6 @@
  */
 
 /**
- * Created by guni on 2017. 3. 14..
+ * LISP extensions package.
  */
 package org.onosproject.drivers.lisp.extensions;

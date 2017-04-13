@@ -21,9 +21,13 @@ import com.google.common.base.Preconditions;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Modified;
+import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.onlab.packet.ChassisId;
+import org.onlab.util.Tools;
+import org.onosproject.cfg.ComponentConfigService;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.incubator.net.config.basics.ConfigException;
@@ -58,6 +62,7 @@ import org.onosproject.net.provider.ProviderId;
 import org.onosproject.netconf.NetconfController;
 import org.onosproject.netconf.NetconfDeviceListener;
 import org.onosproject.netconf.NetconfException;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -65,6 +70,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Dictionary;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -106,6 +112,11 @@ public class NetconfDeviceProvider extends AbstractProvider
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected MastershipService mastershipService;
 
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    protected ComponentConfigService componentConfigService;
+
+
+
     protected static final String APP_NAME = "org.onosproject.netconf";
     private static final String SCHEME_NAME = "netconf";
     private static final String DEVICE_PROVIDER_PACKAGE = "org.onosproject.netconf.provider.device";
@@ -115,9 +126,12 @@ public class NetconfDeviceProvider extends AbstractProvider
     private static final String NETCONF = "netconf";
     private static final String PORT = "port";
     private static final int CORE_POOL_SIZE = 10;
-    //FIXME eventually a property
-    private static final int ISREACHABLE_TIMEOUT = 2000;
+
     private static final int DEFAULT_POLL_FREQUENCY_SECONDS = 30;
+    @Property(name = "pollFrequency", intValue = DEFAULT_POLL_FREQUENCY_SECONDS,
+            label = "Configure poll frequency for port status and statistics; " +
+                    "default is 30 sec")
+    private int pollFrequency = DEFAULT_POLL_FREQUENCY_SECONDS;
 
     protected final ExecutorService executor =
             Executors.newFixedThreadPool(5, groupedThreads("onos/netconfdeviceprovider",
@@ -148,8 +162,9 @@ public class NetconfDeviceProvider extends AbstractProvider
 
 
     @Activate
-    public void activate() {
+    public void activate(ComponentContext context) {
         active = true;
+        componentConfigService.registerProperties(getClass());
         providerService = providerRegistry.register(this);
         appId = coreService.registerApplication(APP_NAME);
         cfgService.registerConfigFactory(factory);
@@ -157,13 +172,14 @@ public class NetconfDeviceProvider extends AbstractProvider
         controller.addDeviceListener(innerNodeListener);
         deviceService.addListener(deviceListener);
         executor.execute(NetconfDeviceProvider.this::connectDevices);
-        scheduledTask = schedulePolling();
+        modified(context);
         log.info("Started");
     }
 
 
     @Deactivate
     public void deactivate() {
+        componentConfigService.unregisterProperties(getClass(), false);
         deviceService.removeListener(deviceListener);
         active = false;
         controller.getNetconfDevices().forEach(id -> {
@@ -180,6 +196,21 @@ public class NetconfDeviceProvider extends AbstractProvider
         log.info("Stopped");
     }
 
+
+    @Modified
+    public void modified(ComponentContext context) {
+        if (context != null) {
+            Dictionary<?, ?> properties = context.getProperties();
+            pollFrequency = Tools.getIntegerProperty(properties, "pollFrequency",
+                                                     DEFAULT_POLL_FREQUENCY_SECONDS);
+            log.info("Configured. Poll frequency is configured to {} seconds", pollFrequency);
+        }
+        if (scheduledTask != null) {
+            scheduledTask.cancel(false);
+        }
+        scheduledTask = schedulePolling();
+    }
+
     public NetconfDeviceProvider() {
         super(new ProviderId(SCHEME_NAME, DEVICE_PROVIDER_PACKAGE));
     }
@@ -188,9 +219,8 @@ public class NetconfDeviceProvider extends AbstractProvider
     // every DEFAULT_POLL_FREQUENCY_SECONDS seconds.
     private ScheduledFuture schedulePolling() {
         return connectionExecutor.scheduleAtFixedRate(exceptionSafe(this::checkAndUpdateDevices),
-                                                      DEFAULT_POLL_FREQUENCY_SECONDS / 10,
-                                                      DEFAULT_POLL_FREQUENCY_SECONDS,
-                                                      TimeUnit.SECONDS);
+                                                      pollFrequency / 10,
+                                                      pollFrequency, TimeUnit.SECONDS);
     }
 
     private Runnable exceptionSafe(Runnable runnable) {
@@ -306,7 +336,7 @@ public class NetconfDeviceProvider extends AbstractProvider
                 log.debug("Netconf device {} removed from Netconf subController", deviceId);
             } else {
                 log.warn("Netconf device {} does not exist in the store, " +
-                         "it may already have been removed", deviceId);
+                                 "it may already have been removed", deviceId);
             }
         }
     }
@@ -351,13 +381,13 @@ public class NetconfDeviceProvider extends AbstractProvider
     }
 
     private void checkAndUpdateDevice(DeviceId deviceId, DeviceDescription deviceDescription) {
-        if (deviceService.getDevice(deviceId) == null) {
+        Device device = deviceService.getDevice(deviceId);
+        if (device == null) {
             log.warn("Device {} has not been added to store, " +
                              "maybe due to a problem in connectivity", deviceId);
         } else {
             boolean isReachable = isReachable(deviceId);
             if (isReachable && !deviceService.isAvailable(deviceId)) {
-                Device device = deviceService.getDevice(deviceId);
                 if (device.is(DeviceDescriptionDiscovery.class)) {
                     if (mastershipService.isLocalMaster(deviceId)) {
                         DeviceDescriptionDiscovery deviceDescriptionDiscovery =
@@ -381,13 +411,26 @@ public class NetconfDeviceProvider extends AbstractProvider
                 } else {
                     log.warn("No DeviceDescriptionDiscovery behaviour for device {} " +
                                      "using DefaultDeviceDescription", deviceId);
-                            providerService.deviceConnected(
-                                    deviceId, new DefaultDeviceDescription(
+                    providerService.deviceConnected(
+                            deviceId, new DefaultDeviceDescription(
                                     deviceDescription, true, deviceDescription.annotations()));
                 }
             } else if (!isReachable && deviceService.isAvailable(deviceId)) {
                 providerService.deviceDisconnected(deviceId);
+            } else if (isReachable && deviceService.isAvailable(deviceId)) {
+                updatePortStatistics(device);
             }
+        }
+    }
+
+    private void updatePortStatistics(Device device) {
+        if (device.is(PortStatisticsDiscovery.class)) {
+            PortStatisticsDiscovery d = device.as(PortStatisticsDiscovery.class);
+            providerService.updatePortStatistics(device.id(),
+                                                 d.discoverPortStatistics());
+        } else {
+            log.warn("No port statistics getter behaviour for device {}",
+                     device.id());
         }
     }
 
@@ -482,15 +525,7 @@ public class NetconfDeviceProvider extends AbstractProvider
         }
 
         // Port statistics discovery
-        if (device.is(PortStatisticsDiscovery.class)) {
-            PortStatisticsDiscovery d =
-                    device.as(PortStatisticsDiscovery.class);
-            providerService.updatePortStatistics(deviceId,
-                                                 d.discoverPortStatistics());
-        } else {
-            log.warn("No port statistics getter behaviour for device {}",
-                     deviceId);
-        }
+        updatePortStatistics(device);
     }
 
     /**

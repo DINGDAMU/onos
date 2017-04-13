@@ -24,9 +24,9 @@
 
     var Collection, Model;
 
-    var hostIconDim = 20,
-        hostIconDimMin = 15,
-        hostIconDimMax = 20,
+    var hostIconDim = 15,
+        hostIconDimMin = 8,
+        hostIconDimMax = 15,
         remappedDeviceTypes = {};
 
     function createHostCollection(data, region) {
@@ -48,8 +48,8 @@
     angular.module('ovTopo2')
     .factory('Topo2HostService', [
         'Topo2Collection', 'Topo2NodeModel', 'Topo2ViewService',
-        'IconService', 'Topo2ZoomService', 'Topo2HostsPanelService',
-        function (_c_, NodeModel, _t2vs_, is, zs, t2hds) {
+        'IconService', 'Topo2ZoomService', 'Topo2HostsPanelService', 'PrefsService',
+        function (_c_, NodeModel, _t2vs_, is, zs, t2hds, ps) {
 
             Collection = _c_;
 
@@ -59,7 +59,6 @@
                 events: {
                     'click': 'onClick'
                 },
-
                 initialize: function () {
                     this.super = this.constructor.__super__;
                     this.super.initialize.apply(this, arguments);
@@ -78,20 +77,11 @@
                     return remappedDeviceTypes[type] || type || 'm_endstation';
                 },
                 label: function () {
-                    var labelText = this.get('id'),
-                        ips = this.get('ips');
-
-                    if (this.labelIndex() === 0) {
-                        return '';
-                    }
-
-                    if (ips && ips.length > 0) {
-                        labelText = ips[0];
-                    }
-
-                    return labelText;
+                    return this.get('ips')[0] || 'unknown';
                 },
                 setScale: function () {
+
+                    if (!this.el) return;
 
                     var dim = hostIconDim,
                         multipler = 1;
@@ -105,10 +95,13 @@
                     this.el.select('g').selectAll('*')
                         .style('transform', 'scale(' + multipler + ')');
                 },
+                setVisibility: function () {
+                    var visible = ps.getPrefs('topo2_prefs')['hosts'];
+                    this.el.style('visibility', visible ? 'visible' : 'hidden');
+                },
                 onEnter: function (el) {
                     var node = d3.select(el),
                         icon = this.icon(),
-                        iconDim = hostIconDim,
                         textDy = 5,
                         textDx = (hostIconDim * 2) + 20;
 
@@ -118,12 +111,14 @@
                         .attr('class', 'svgIcon hostIcon');
 
                     g.append('circle').attr('r', hostIconDim);
+
+                    var glyphSize = hostIconDim * 1.5;
                     g.append('use').attr({
                         'xlink:href': '#' + icon,
-                        width: iconDim,
-                        height: iconDim,
-                        x: -iconDim / 2,
-                        y: -iconDim / 2
+                        width: glyphSize,
+                        height: glyphSize,
+                        x: -glyphSize / 2,
+                        y: -glyphSize / 2
                     });
 
                     var labelText = this.label();
@@ -136,6 +131,7 @@
 
                     this.setScale();
                     this.setUpEvents();
+                    this.setVisibility();
                 }
             });
 

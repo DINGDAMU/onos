@@ -136,8 +136,6 @@
                         return this.settings[settingName][nodeType] || this.settings[settingName]._def_;
                     },
                     createForceLayout: function () {
-                        var regionLinks = t2rs.regionLinks(),
-                            regionNodes = t2rs.regionNodes();
 
                         this.force = d3.layout.force()
                             .size(t2vs.getDimensions())
@@ -146,16 +144,10 @@
                             .charge(this.settingOrDefault.bind(this, 'charge'))
                             .linkDistance(this.settingOrDefault.bind(this, 'linkDistance'))
                             .linkStrength(this.settingOrDefault.bind(this, 'linkStrength'))
-                            .nodes(regionNodes)
-                            .links(regionLinks)
+                            .nodes([])
+                            .links([])
                             .on("tick", this.tick.bind(this))
                             .start();
-
-                        this.link = this.elements.linkG.selectAll('.link')
-                            .data(regionLinks, function (d) { return d.get('key'); });
-
-                        this.node = this.elements.nodeG.selectAll('.node')
-                            .data(regionNodes, function (d) { return d.get('id'); });
 
                         this.drag = sus.createDragBehavior(this.force,
                             function () {}, // click event is no longer handled in the drag service
@@ -177,13 +169,10 @@
 
                         t2zs.panAndZoom([x, y], scale, 1000);
                     },
+                    setLinkPosition: function (link) {
+                        link.setPosition.bind(link)();
+                    },
                     tick: function () {
-
-                        this.link
-                            .attr("x1", function (d) { return d.get('source').x; })
-                            .attr("y1", function (d) { return d.get('source').y; })
-                            .attr("x2", function (d) { return d.get('target').x; })
-                            .attr("y2", function (d) { return d.get('target').y; });
 
                         this.node
                             .attr({
@@ -193,6 +182,13 @@
                                     return sus.translate(dx, dy);
                                 }
                             });
+
+                        this.link
+                            .each(this.setLinkPosition)
+                            .attr("x1", function (d) { return d.get('position').x1; })
+                            .attr("y1", function (d) { return d.get('position').y1; })
+                            .attr("x2", function (d) { return d.get('position').x2; })
+                            .attr("y2", function (d) { return d.get('position').y2; });
                     },
 
                     start: function () {
@@ -208,6 +204,7 @@
                     _update: function () {
                         this.updateNodes();
                         this.updateLinks();
+                        this.force.start();
                     },
                     updateNodes: function () {
                         var regionNodes = t2rs.regionNodes();
@@ -235,6 +232,8 @@
                         entering.filter('.sub-region').each(t2d3.nodeEnter);
                         entering.filter('.host').each(t2d3.nodeEnter);
                         entering.filter('.peer-region').each(t2d3.nodeEnter);
+
+                        this.force.nodes(regionNodes);
                     },
                     updateLinks: function () {
 
@@ -269,6 +268,8 @@
                             })
                             .style('opacity', 0.0)
                             .remove();
+
+                        this.force.links(regionLinks);
                     },
                     calcPosition: function () {
                         var lines = this;

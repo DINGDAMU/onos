@@ -19,15 +19,7 @@ import com.google.common.collect.Lists;
 import org.onlab.packet.IpAddress;
 import org.onlab.packet.IpPrefix;
 import org.onlab.packet.MacAddress;
-import org.onosproject.drivers.lisp.extensions.LispGcAddress;
-import org.onosproject.drivers.lisp.extensions.LispNatAddress;
-import org.onosproject.drivers.lisp.extensions.LispSrcDstAddress;
-import org.onosproject.drivers.lisp.extensions.LispAppDataAddress;
-import org.onosproject.drivers.lisp.extensions.LispListAddress;
-import org.onosproject.drivers.lisp.extensions.LispMulticastAddress;
-import org.onosproject.drivers.lisp.extensions.LispNonceAddress;
-import org.onosproject.drivers.lisp.extensions.LispSegmentAddress;
-import org.onosproject.drivers.lisp.extensions.LispTeAddress;
+import org.onosproject.lisp.ctl.ExtensionMappingAddressInterpreter;
 import org.onosproject.lisp.msg.protocols.LispLocator;
 import org.onosproject.lisp.msg.protocols.LispMapRecord;
 import org.onosproject.lisp.msg.types.LispAfiAddress;
@@ -36,17 +28,7 @@ import org.onosproject.lisp.msg.types.LispDistinguishedNameAddress;
 import org.onosproject.lisp.msg.types.LispIpv4Address;
 import org.onosproject.lisp.msg.types.LispIpv6Address;
 import org.onosproject.lisp.msg.types.LispMacAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispMulticastLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispNonceLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispNatLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispGeoCoordinateLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispAsLcafAddress;
 import org.onosproject.lisp.msg.types.lcaf.LispLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispSegmentLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispAppDataLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispListLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispSourceDestLcafAddress;
-import org.onosproject.lisp.msg.types.lcaf.LispTeLcafAddress;
 import org.onosproject.mapping.DefaultMapping;
 import org.onosproject.mapping.DefaultMappingEntry;
 import org.onosproject.mapping.DefaultMappingKey;
@@ -63,19 +45,23 @@ import org.onosproject.mapping.actions.MappingActions;
 import org.onosproject.mapping.addresses.ExtensionMappingAddress;
 import org.onosproject.mapping.addresses.MappingAddress;
 import org.onosproject.mapping.addresses.MappingAddresses;
+import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
+import org.onosproject.net.device.DeviceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
 
+import static org.onosproject.mapping.addresses.ExtensionMappingAddressType.ExtensionMappingAddressTypes.*;
+
 /**
  * Mapping entry builder class.
  */
 public class MappingEntryBuilder {
     private static final Logger log =
-                            LoggerFactory.getLogger(MappingEntryBuilder.class);
+            LoggerFactory.getLogger(MappingEntryBuilder.class);
 
     private static final int IPV4_PREFIX_LENGTH = 32;
     private static final int IPV6_PREFIX_LENGTH = 128;
@@ -86,17 +72,36 @@ public class MappingEntryBuilder {
     private final MappingAction action;
     private final List<MappingTreatment> treatments;
 
+    private final DeviceService deviceService;
+
     /**
      * Default constructor for MappingEntryBuilder.
      *
-     * @param deviceId device identifier
-     * @param record   LISP map record
+     * @param deviceId      device identifier
+     * @param record        LISP map record
+     * @param deviceService device service
+     */
+    public MappingEntryBuilder(DeviceId deviceId, LispMapRecord record,
+                               DeviceService deviceService) {
+        this.deviceId = deviceId;
+        this.address = buildAddress(record);
+        this.action = buildAction(record);
+        this.treatments = buildTreatments(record);
+        this.deviceService = deviceService;
+    }
+
+    /**
+     * Default constructor for MappingEntryBuilder.
+     *
+     * @param deviceId      device identifier
+     * @param record        LISP map record
      */
     public MappingEntryBuilder(DeviceId deviceId, LispMapRecord record) {
         this.deviceId = deviceId;
         this.address = buildAddress(record);
         this.action = buildAction(record);
         this.treatments = buildTreatments(record);
+        this.deviceService = null;
     }
 
     /**
@@ -189,8 +194,7 @@ public class MappingEntryBuilder {
      */
     private MappingAddress buildAddress(LispMapRecord record) {
 
-        return record == null ? null :
-                getAddress(record.getEidPrefixAfi());
+        return record == null ? null : getAddress(record.getEidPrefixAfi());
     }
 
     /**
@@ -208,22 +212,22 @@ public class MappingEntryBuilder {
 
         switch (address.getAfi()) {
             case IP4:
-                return afi2MappingAddress(address);
+                return afi2mapping(address);
             case IP6:
-                return afi2MappingAddress(address);
+                return afi2mapping(address);
             case AS:
                 int asNum = ((LispAsAddress) address).getASNum();
                 return MappingAddresses.asMappingAddress(String.valueOf(asNum));
             case DISTINGUISHED_NAME:
                 String dn = ((LispDistinguishedNameAddress)
-                                                address).getDistinguishedName();
+                        address).getDistinguishedName();
                 return MappingAddresses.dnMappingAddress(dn);
             case MAC:
                 MacAddress macAddress = ((LispMacAddress) address).getAddress();
                 return MappingAddresses.ethMappingAddress(macAddress);
             case LCAF:
-                LispLcafAddress lcafAddress = (LispLcafAddress) address;
-                return lcaf2Extension(lcafAddress);
+                return deviceService == null ? null :
+                                     lcaf2extension((LispLcafAddress) address);
             default:
                 log.warn("Unsupported address type {}", address.getAfi());
                 break;
@@ -235,176 +239,89 @@ public class MappingEntryBuilder {
     /**
      * Converts LCAF address to extension mapping address.
      *
-     * @param lcaf LCAF address
+     * @param lcaf          LCAF address
      * @return extension mapping address
      */
-    private MappingAddress lcaf2Extension(LispLcafAddress lcaf) {
+    private MappingAddress lcaf2extension(LispLcafAddress lcaf) {
 
-        ExtensionMappingAddress ema;
+        Device device = deviceService.getDevice(deviceId);
+
+        ExtensionMappingAddressInterpreter addressInterpreter;
+        ExtensionMappingAddress mappingAddress = null;
+        if (device.is(ExtensionMappingAddressInterpreter.class)) {
+            addressInterpreter = device.as(ExtensionMappingAddressInterpreter.class);
+        } else {
+            addressInterpreter = null;
+        }
 
         switch (lcaf.getType()) {
             case LIST:
-                LispListLcafAddress lcafListAddress = (LispListLcafAddress) lcaf;
-                MappingAddress ipv4Ma =
-                        afi2MappingAddress(lcafListAddress.getAddresses().get(0));
-                MappingAddress ipv6Ma =
-                        afi2MappingAddress(lcafListAddress.getAddresses().get(1));
-
-                ema = new LispListAddress.Builder()
-                        .withIpv4(ipv4Ma)
-                        .withIpv6(ipv6Ma)
-                        .build();
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(LIST_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case SEGMENT:
-                LispSegmentLcafAddress segmentLcafAddress = (LispSegmentLcafAddress) lcaf;
-
-                ema = new LispSegmentAddress.Builder()
-                        .withInstanceId(segmentLcafAddress.getInstanceId())
-                        .withAddress(getAddress(segmentLcafAddress.getAddress()))
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(SEGMENT_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case AS:
-                LispAsLcafAddress asLcafAddress = (LispAsLcafAddress) lcaf;
-
-                ema = new org.onosproject.drivers.lisp.extensions.LispAsAddress.Builder()
-                        .withAsNumber(asLcafAddress.getAsNumber())
-                        .withAddress(getAddress(asLcafAddress.getAddress()))
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(AS_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case APPLICATION_DATA:
-
-                LispAppDataLcafAddress appLcafAddress = (LispAppDataLcafAddress) lcaf;
-
-                ema = new LispAppDataAddress.Builder()
-                        .withProtocol(appLcafAddress.getProtocol())
-                        .withIpTos(appLcafAddress.getIpTos())
-                        .withLocalPortLow(appLcafAddress.getLocalPortLow())
-                        .withLocalPortHigh(appLcafAddress.getLocalPortHigh())
-                        .withRemotePortLow(appLcafAddress.getRemotePortLow())
-                        .withRemotePortHigh(appLcafAddress.getRemotePortHigh())
-                        .withAddress(getAddress(appLcafAddress.getAddress()))
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(APPLICATION_DATA_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case GEO_COORDINATE:
-
-                LispGeoCoordinateLcafAddress gcLcafAddress = (LispGeoCoordinateLcafAddress) lcaf;
-
-                ema = new LispGcAddress.Builder()
-                        .withIsNorth(gcLcafAddress.isNorth())
-                        .withLatitudeDegree(gcLcafAddress.getLatitudeDegree())
-                        .withLatitudeMinute(gcLcafAddress.getLatitudeMinute())
-                        .withLatitudeSecond(gcLcafAddress.getLatitudeSecond())
-                        .withIsEast(gcLcafAddress.isEast())
-                        .withLongitudeDegree(gcLcafAddress.getLongitudeDegree())
-                        .withLongitudeMinute(gcLcafAddress.getLongitudeMinute())
-                        .withLongitudeSecond(gcLcafAddress.getLongitudeSecond())
-                        .withAltitude(gcLcafAddress.getAltitude())
-                        .withAddress(getAddress(gcLcafAddress.getAddress()))
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(GEO_COORDINATE_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case NAT:
-
-                LispNatLcafAddress natLcafAddress = (LispNatLcafAddress) lcaf;
-
-                List<MappingAddress> mas = Lists.newArrayList();
-
-                natLcafAddress.getRtrRlocAddresses().forEach(rtr -> mas.add(getAddress(rtr)));
-
-                ema = new LispNatAddress.Builder()
-                        .withMsUdpPortNumber(natLcafAddress.getMsUdpPortNumber())
-                        .withEtrUdpPortNumber(natLcafAddress.getEtrUdpPortNumber())
-                        .withMsRlocAddress(getAddress(natLcafAddress.getMsRlocAddress()))
-                        .withGlobalEtrRlocAddress(getAddress(natLcafAddress.getGlobalEtrRlocAddress()))
-                        .withPrivateEtrRlocAddress(getAddress(natLcafAddress.getPrivateEtrRlocAddress()))
-                        .withRtrRlocAddresses(mas)
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(NAT_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case NONCE:
-
-                LispNonceLcafAddress nonceLcafAddress = (LispNonceLcafAddress) lcaf;
-
-                ema = new LispNonceAddress.Builder()
-                        .withNonce(nonceLcafAddress.getNonce())
-                        .withAddress(getAddress(nonceLcafAddress.getAddress()))
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(NONCE_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case MULTICAST:
-
-                LispMulticastLcafAddress multiLcafAddress = (LispMulticastLcafAddress) lcaf;
-
-                ema = new LispMulticastAddress.Builder()
-                        .withInstanceId(multiLcafAddress.getInstanceId())
-                        .withSrcAddress(getAddress(multiLcafAddress.getSrcAddress()))
-                        .withSrcMaskLength(multiLcafAddress.getSrcMaskLength())
-                        .withGrpAddress(getAddress(multiLcafAddress.getGrpAddress()))
-                        .withGrpMaskLength(multiLcafAddress.getGrpMaskLength())
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(MULTICAST_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case TRAFFIC_ENGINEERING:
-
-                LispTeLcafAddress teLcafAddress = (LispTeLcafAddress) lcaf;
-
-                List<LispTeAddress.TeRecord> records = Lists.newArrayList();
-
-                teLcafAddress.getTeRecords().forEach(record -> {
-                    LispTeAddress.TeRecord teRecord =
-                            new LispTeAddress.TeRecord.Builder()
-                                    .withIsLookup(record.isLookup())
-                                    .withIsRlocProbe(record.isRlocProbe())
-                                    .withIsStrict(record.isStrict())
-                                    .withRtrRlocAddress(getAddress(record.getRtrRlocAddress()))
-                                    .build();
-                    records.add(teRecord);
-                });
-
-                ema = new LispTeAddress.Builder()
-                        .withTeRecords(records)
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
-            case SECURITY:
-
-                // TODO: need to implement security type later
-                log.warn("security type will be implemented later");
-
-                return null;
-
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(TRAFFIC_ENGINEERING_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             case SOURCE_DEST:
-
-                LispSourceDestLcafAddress srcDstLcafAddress = (LispSourceDestLcafAddress) lcaf;
-
-
-                ema = new LispSrcDstAddress.Builder()
-                        .withSrcPrefix(getAddress(srcDstLcafAddress.getSrcPrefix()))
-                        .withSrcMaskLength(srcDstLcafAddress.getSrcMaskLength())
-                        .withDstPrefix(getAddress(srcDstLcafAddress.getDstPrefix()))
-                        .withDstMaskLength(srcDstLcafAddress.getDstMaskLength())
-                        .build();
-
-                return MappingAddresses.extensionMappingAddressWrapper(ema, deviceId);
-
-            case UNSPECIFIED:
-            case UNKNOWN:
+                if (addressInterpreter != null &&
+                        addressInterpreter.supported(SOURCE_DEST_ADDRESS.type())) {
+                    mappingAddress = addressInterpreter.mapLcafAddress(lcaf);
+                }
+                break;
             default:
-                log.error("Unsupported LCAF type {}", lcaf.getType());
-                return null;
+                log.warn("Unsupported extension mapping address type {}", lcaf.getType());
+                break;
         }
+
+        return mappingAddress != null ?
+                MappingAddresses.extensionMappingAddressWrapper(mappingAddress, deviceId) : null;
     }
 
     /**
@@ -413,7 +330,7 @@ public class MappingEntryBuilder {
      * @param afiAddress IP typed AFI address
      * @return generalized mapping address
      */
-    private MappingAddress afi2MappingAddress(LispAfiAddress afiAddress) {
+    private MappingAddress afi2mapping(LispAfiAddress afiAddress) {
         switch (afiAddress.getAfi()) {
             case IP4:
                 IpAddress ipv4Address = ((LispIpv4Address) afiAddress).getAddress();

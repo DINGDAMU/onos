@@ -30,7 +30,6 @@
 
                 var Toolbar = function () {
                     instance = this;
-                    this.el = tbs.createToolbar(this.className);
                 };
 
                 Toolbar.prototype = {
@@ -38,12 +37,13 @@
                     className: 'topo2-toolbar',
 
                     init: function () {
+                        this.el = tbs.createToolbar(this.className);
                         this.initKeyData();
                         this.addFirstRow();
                         this.el.addRow();
                         this.addSecondRow();
 
-                        this.el.show();
+                        this.el.hide();
                     },
                     initKeyData: function () {
                         _.each(k2b, function(value, key) {
@@ -72,6 +72,10 @@
                         var v =  this.getKey(key);
                         if (suppressIfMobile && fs.isMobile()) { return; }
                         v.tog = this.el.addToggle(v.id, v.gid, v.isel, v.cb, v.tt);
+                    },
+
+                    toggle: function () {
+                        this.el.toggle();
                     },
 
                     addFirstRow: function () {

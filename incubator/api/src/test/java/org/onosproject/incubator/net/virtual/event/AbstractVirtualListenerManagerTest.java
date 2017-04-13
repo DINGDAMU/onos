@@ -52,24 +52,22 @@ import static org.junit.Assert.*;
  */
 public class AbstractVirtualListenerManagerTest {
 
-    private VirtualNetworkService manager;
-
-    TestEventDispatcher dispatcher = new TestEventDispatcher();
-    VirtualListenerRegistryManager listenerRegistryManager =
+    private TestEventDispatcher dispatcher = new TestEventDispatcher();
+    private VirtualListenerRegistryManager listenerRegistryManager =
             VirtualListenerRegistryManager.getInstance();
 
-    PrickleManager prickleManager;
-    PrickleListener prickleListener;
+    private PrickleManager prickleManager;
+    private PrickleListener prickleListener;
 
-    GooManager gooManager;
-    GooListener gooListener;
+    private GooManager gooManager;
+    private GooListener gooListener;
 
-    BarManager barManager;
-    BarListener barListener;
+    private BarManager barManager;
+    private BarListener barListener;
 
     @Before
     public void setUp() {
-        manager = new TestVirtualNetworkManager();
+        VirtualNetworkService manager = new TestVirtualNetworkManager();
 
         dispatcher.addSink(VirtualEvent.class, listenerRegistryManager);
 
@@ -158,20 +156,20 @@ public class AbstractVirtualListenerManagerTest {
         }
     }
 
-    private static class Prickle extends Thing {
-        protected Prickle(String subject) {
+    private static final class Prickle extends Thing {
+        private Prickle(String subject) {
             super(subject);
         }
     }
 
-    private static class Goo extends Thing {
-        protected Goo(String subject) {
+    private static final class Goo extends Thing {
+        private Goo(String subject) {
             super(subject);
         }
     }
 
-    private static class Bar extends Thing {
-        protected Bar(String subject) {
+    private static final class Bar extends Thing {
+        private Bar(String subject) {
             super(subject);
         }
     }
@@ -198,19 +196,19 @@ public class AbstractVirtualListenerManagerTest {
 
     private class PrickleManager extends AbstractVirtualListenerManager<Prickle, PrickleListener> {
         public PrickleManager(VirtualNetworkService service, NetworkId networkId) {
-            super(service, networkId);
+            super(service, networkId, Prickle.class);
         }
     }
 
     private class GooManager extends AbstractVirtualListenerManager<Goo, GooListener> {
         public GooManager(VirtualNetworkService service, NetworkId networkId) {
-            super(service, networkId);
+            super(service, networkId, Goo.class);
         }
     }
 
     private class BarManager extends AbstractVirtualListenerManager<Bar, BarListener> {
         public BarManager(VirtualNetworkService service, NetworkId networkId) {
-            super(service, networkId);
+            super(service, networkId, Bar.class);
         }
     }
 

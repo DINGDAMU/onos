@@ -35,5 +35,10 @@ public enum BgpModelIdLevel {
     /**
      * Requested model id level is device list.
      */
-    DEVICE
+    DEVICE,
+
+    /**
+     * Requested model id level is VPN list.
+     */
+    VPN
 }

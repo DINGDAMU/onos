@@ -179,8 +179,8 @@ public class SegmentRoutingManager implements SegmentRoutingService {
     IcmpHandler icmpHandler = null;
     IpHandler ipHandler = null;
     RoutingRulePopulator routingRulePopulator = null;
-    public ApplicationId appId;
-    public DeviceConfiguration deviceConfiguration = null;
+    ApplicationId appId;
+    DeviceConfiguration deviceConfiguration = null;
 
     DefaultRoutingHandler defaultRoutingHandler = null;
     private TunnelHandler tunnelHandler = null;
@@ -215,17 +215,17 @@ public class SegmentRoutingManager implements SegmentRoutingService {
     /**
      * Per device next objective ID store with (device id + neighbor set) as key.
      */
-    public EventuallyConsistentMap<NeighborSetNextObjectiveStoreKey, Integer>
+    EventuallyConsistentMap<NeighborSetNextObjectiveStoreKey, Integer>
             nsNextObjStore = null;
     /**
      * Per device next objective ID store with (device id + subnet) as key.
      */
-    public EventuallyConsistentMap<VlanNextObjectiveStoreKey, Integer>
+    EventuallyConsistentMap<VlanNextObjectiveStoreKey, Integer>
             vlanNextObjStore = null;
     /**
      * Per device next objective ID store with (device id + port) as key.
      */
-    public EventuallyConsistentMap<PortNextObjectiveStoreKey, Integer>
+    EventuallyConsistentMap<PortNextObjectiveStoreKey, Integer>
             portNextObjStore = null;
 
     private EventuallyConsistentMap<String, Tunnel> tunnelStore = null;
@@ -500,6 +500,51 @@ public class SegmentRoutingManager implements SegmentRoutingService {
     }
 
     /**
+     * Extracts the application ID from the manager.
+     *
+     * @return application ID
+     */
+    public ApplicationId appId() {
+        return appId;
+    }
+
+    /**
+     * Returns the device configuration.
+     *
+     * @return device configuration
+     */
+    public DeviceConfiguration deviceConfiguration() {
+        return deviceConfiguration;
+    }
+
+    /**
+     * Per device next objective ID store with (device id + neighbor set) as key.
+     *
+     * @return next objective ID store
+     */
+    public EventuallyConsistentMap<NeighborSetNextObjectiveStoreKey, Integer> nsNextObjStore() {
+        return nsNextObjStore;
+    }
+
+    /**
+     * Per device next objective ID store with (device id + subnet) as key.
+     *
+     * @return vlan next object store
+     */
+    public EventuallyConsistentMap<VlanNextObjectiveStoreKey, Integer> vlanNextObjStore() {
+        return vlanNextObjStore;
+    }
+
+    /**
+     * Per device next objective ID store with (device id + port) as key.
+     *
+     * @return port next object store.
+     */
+    public EventuallyConsistentMap<PortNextObjectiveStoreKey, Integer> portNextObjStore() {
+        return portNextObjStore;
+    }
+
+    /**
      * Returns the MPLS-ECMP configuration.
      *
      * @return MPLS-ECMP value
@@ -660,21 +705,23 @@ public class SegmentRoutingManager implements SegmentRoutingService {
     /**
      * Returns the next objective ID for the given portNumber, given the treatment.
      * There could be multiple different treatments to the same outport, which
-     * would result in different objectives. If the next object
-     * does not exist, a new one is created and its id is returned.
+     * would result in different objectives. If the next object does not exist,
+     * and should be created, a new one is created and its id is returned.
      *
      * @param deviceId Device ID
      * @param portNum port number on device for which NextObjective is queried
      * @param treatment the actions to apply on the packets (should include outport)
      * @param meta metadata passed into the creation of a Next Objective if necessary
+     * @param createIfMissing true if a next object should be created if not found
      * @return next objective ID or -1 if an error occurred during retrieval or creation
      */
     public int getPortNextObjectiveId(DeviceId deviceId, PortNumber portNum,
                                       TrafficTreatment treatment,
-                                      TrafficSelector meta) {
+                                      TrafficSelector meta,
+                                      boolean createIfMissing) {
         DefaultGroupHandler ghdlr = groupHandlerMap.get(deviceId);
         if (ghdlr != null) {
-            return ghdlr.getPortNextObjectiveId(portNum, treatment, meta);
+            return ghdlr.getPortNextObjectiveId(portNum, treatment, meta, createIfMissing);
         } else {
             log.warn("getPortNextObjectiveId query - groupHandler for device {}"
                     + " not found", deviceId);
@@ -737,8 +784,9 @@ public class SegmentRoutingManager implements SegmentRoutingService {
     private class InternalLinkListener implements LinkListener {
         @Override
         public void event(LinkEvent event) {
-            if (event.type() == LinkEvent.Type.LINK_ADDED
-                    || event.type() == LinkEvent.Type.LINK_REMOVED) {
+            if (event.type() == LinkEvent.Type.LINK_ADDED ||
+                    event.type() == LinkEvent.Type.LINK_UPDATED ||
+                    event.type() == LinkEvent.Type.LINK_REMOVED) {
                 log.debug("Event {} received from Link Service", event.type());
                 scheduleEventHandlerIfNotScheduled(event);
             }
@@ -798,7 +846,8 @@ public class SegmentRoutingManager implements SegmentRoutingService {
                             break;
                         }
                     }
-                    if (event.type() == LinkEvent.Type.LINK_ADDED) {
+                    if (event.type() == LinkEvent.Type.LINK_ADDED ||
+                            event.type() == LinkEvent.Type.LINK_UPDATED) {
                         processLinkAdded((Link) event.subject());
                     } else if (event.type() == LinkEvent.Type.LINK_REMOVED) {
                         Link linkRemoved = (Link) event.subject();

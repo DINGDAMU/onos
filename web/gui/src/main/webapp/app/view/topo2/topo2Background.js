@@ -63,10 +63,11 @@
                         t2ms.init();
                         this.zoomer = t2zs.getZoomer();
                     },
-                    addLayout: function (data) {
 
+                    addLayout: function (data) {
                         this.background = data;
                         this.bgType = data.bgType;
+                        this.bgId = data.bgId;
                         this.zoomData = data.bgZoom;
 
                         var _this = this,
@@ -74,7 +75,6 @@
                             scale = zoomScale(this.zoomData);
 
                         if (this.bgType === 'geo') {
-
                             // Hide Sprite Layer and show Map
                             t2sls.hide();
                             t2ms.show();
@@ -101,13 +101,18 @@
                             // No background type - Tell the region the background is ready for placing nodes
                             t2ms.hide();
                             t2sls.hide();
-                            // _this.region.loaded('bgRendered', true);
-                            // t2zs.panAndZoom(pan, _this.background.bgZoomScale, 1000);
+
+                            _this.region.loaded('bgRendered', true);
+
+                            // Use default zoom and pan
+                            t2zs.panAndZoom([0, 0], 1);
                         }
                     },
+
                     getBackgroundType: function () {
                         return this.bgType;
                     },
+
                     resetZoom: function () {
                         var pan = zoomPan(this.zoomData, true);
                         t2zs.panAndZoom(pan, zoomScale(this.zoomData, true), 1000);

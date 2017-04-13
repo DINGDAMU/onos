@@ -148,11 +148,11 @@ public class SfcManager implements SfcService {
 
         nshSpiPortChainMap = storageService.<PortChainId, Integer>eventuallyConsistentMapBuilder()
                 .withName("nshSpiPortChainMap").withSerializer(serializer)
-                .withTimestampProvider((k, v) ->new WallClockTimestamp()).build();
+                .withTimestampProvider((k, v) -> new WallClockTimestamp()).build();
 
         portChainFiveTupleMap = storageService.<PortChainId, List<FiveTuple>>eventuallyConsistentMapBuilder()
                 .withName("portChainFiveTupleMap").withSerializer(serializer)
-                .withTimestampProvider((k, v) ->new WallClockTimestamp()).build();
+                .withTimestampProvider((k, v) -> new WallClockTimestamp()).build();
 
         nshSpiIdFreeList = storageService.<Integer>setBuilder()
                 .withName("nshSpiIdDeletedList")
@@ -407,11 +407,11 @@ public class SfcManager implements SfcService {
                     boolean match = false;
                     // Check whether protocol is set in flow classifier
                     if (flowClassifier.protocol() != null) {
-                        if ((flowClassifier.protocol().equalsIgnoreCase("TCP")
+                        if (("TCP".equalsIgnoreCase(flowClassifier.protocol())
                                 && fiveTuple.protocol() == IPv4.PROTOCOL_TCP)
-                                || (flowClassifier.protocol().equalsIgnoreCase("UDP")
+                                || ("UDP".equalsIgnoreCase(flowClassifier.protocol())
                                         && fiveTuple.protocol() == IPv4.PROTOCOL_UDP)
-                                        || (flowClassifier.protocol().equalsIgnoreCase("ICMP")
+                                        || ("ICMP".equalsIgnoreCase(flowClassifier.protocol())
                                                 && fiveTuple.protocol() == IPv4.PROTOCOL_ICMP)) {
                             match = true;
                         } else {

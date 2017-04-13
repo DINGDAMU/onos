@@ -29,16 +29,24 @@
     var MapSelectionDialog;
 
     // internal state
-    var instance, mapG, zoomLayer, zoomer;
+    var instance, mapG, zoomLayer, zoomer, currentMap;
 
     function init() {
         this.appendElement('#topo2-background', 'g');
         zoomLayer = d3.select('#topo2-zoomlayer');
         zoomer = t2zs.getZoomer();
+        currentMap = null;
     }
 
-    // TODO: to be re-worked: map-id, filePath, scale/pan to be passed as params
     function setUpMap(mapId, mapFilePath, mapScale) {
+
+        if (currentMap === mapId) {
+            return new Promise(function(resolve) {
+                resolve();
+            });
+        }
+
+        currentMap = mapId;
 
         var loadMap = ms.loadMapInto,
             promise, cfilter;
@@ -57,21 +65,6 @@
         });
 
         return promise;
-    }
-
-    // TODO: deprecated - the layout will tell us which map
-    //   no longer stored in user preferences
-    function currentMap() {
-        return ps.getPrefs(
-            'topo2_mapid',
-            {
-                mapid: 'italy',
-                mapscale: 0.8,
-                mapfilepath: '*continental_us',
-                tint: 'off'
-            },
-            $loc.search()
-        );
     }
 
     // TODO: deprecated - maps are defined per layout on the server side.
@@ -95,6 +88,15 @@
 
     function resetZoom() {
         zoomer.reset();
+    }
+
+    function zoomCallback(sc, tr) {
+        // keep the map lines constant width while zooming
+        this.node().style('stroke-width', (2.0 / sc) + 'px');
+    }
+
+    function getCurrentMap() {
+        return currentMap;
     }
 
     angular.module('ovTopo2')
@@ -126,7 +128,9 @@
                 setMap: setMap,
                 setUpMap: setUpMap,
                 openMapSelection: openMapSelection,
-                resetZoom: resetZoom
+                resetZoom: resetZoom,
+                zoomCallback: zoomCallback,
+                getCurrentMap: getCurrentMap
             });
 
             return instance || new MapLayer();

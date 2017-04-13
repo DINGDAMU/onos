@@ -18,6 +18,7 @@
 package org.onosproject.ui.impl;
 
 import com.google.common.collect.ImmutableList;
+import org.onosproject.incubator.net.PortStatisticsService.MetricType;
 import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.ElementId;
@@ -68,10 +69,10 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import static org.onosproject.incubator.net.PortStatisticsService.MetricType.BYTES;
+import static org.onosproject.incubator.net.PortStatisticsService.MetricType.PACKETS;
 import static org.onosproject.net.DefaultEdgeLink.createEdgeLink;
-import static org.onosproject.ui.impl.TrafficMonitor.Mode.IDLE;
-import static org.onosproject.ui.impl.TrafficMonitor.Mode.RELATED_INTENTS;
-import static org.onosproject.ui.impl.TrafficMonitor.Mode.SELECTED_INTENT;
+import static org.onosproject.ui.impl.TrafficMonitor.Mode.*;
 
 /**
  * Encapsulates the behavior of monitoring specific traffic patterns.
@@ -79,7 +80,7 @@ import static org.onosproject.ui.impl.TrafficMonitor.Mode.SELECTED_INTENT;
 public class TrafficMonitor extends AbstractTopoMonitor {
 
     // 4 Kilo Bytes as threshold
-    private static final double BPS_THRESHOLD = 4 * TopoUtils.KILO;
+    private static final double BPS_THRESHOLD = 4 * TopoUtils.N_KILO;
 
     private static final Logger log =
             LoggerFactory.getLogger(TrafficMonitor.class);
@@ -89,8 +90,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
      */
     public enum Mode {
         IDLE,
-        ALL_FLOW_TRAFFIC,
-        ALL_PORT_TRAFFIC,
+        ALL_FLOW_TRAFFIC_BYTES,
+        ALL_PORT_TRAFFIC_BIT_PS,
+        ALL_PORT_TRAFFIC_PKT_PS,
         DEV_LINK_FLOWS,
         RELATED_INTENTS,
         SELECTED_INTENT
@@ -136,8 +138,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
      * <p>
      * The monitoring mode is expected to be one of:
      * <ul>
-     * <li>ALL_FLOW_TRAFFIC</li>
-     * <li>ALL_PORT_TRAFFIC</li>
+     * <li>ALL_FLOW_TRAFFIC_BYTES</li>
+     * <li>ALL_PORT_TRAFFIC_BIT_PS</li>
+     * <li>ALL_PORT_TRAFFIC_PKT_PS</li>
      * <li>SELECTED_INTENT</li>
      * </ul>
      *
@@ -148,16 +151,22 @@ public class TrafficMonitor extends AbstractTopoMonitor {
         this.mode = mode;
 
         switch (mode) {
-            case ALL_FLOW_TRAFFIC:
+            case ALL_FLOW_TRAFFIC_BYTES:
                 clearSelection();
                 scheduleTask();
                 sendAllFlowTraffic();
                 break;
 
-            case ALL_PORT_TRAFFIC:
+            case ALL_PORT_TRAFFIC_BIT_PS:
                 clearSelection();
                 scheduleTask();
-                sendAllPortTraffic();
+                sendAllPortTraffic(StatsType.PORT_STATS);
+                break;
+
+            case ALL_PORT_TRAFFIC_PKT_PS:
+                clearSelection();
+                scheduleTask();
+                sendAllPortTraffic(StatsType.PORT_PACKET_STATS);
                 break;
 
             case SELECTED_INTENT:
@@ -334,9 +343,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
         msgHandler.sendHighlights(trafficSummary(StatsType.FLOW_STATS));
     }
 
-    private void sendAllPortTraffic() {
-        log.debug("sendAllPortTraffic");
-        msgHandler.sendHighlights(trafficSummary(StatsType.PORT_STATS));
+    private void sendAllPortTraffic(StatsType t) {
+        log.debug("sendAllPortTraffic: {}", t);
+        msgHandler.sendHighlights(trafficSummary(t));
     }
 
     private void sendDeviceLinkFlows() {
@@ -373,7 +382,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
             if (type == StatsType.FLOW_STATS) {
                 attachFlowLoad(tlink);
             } else if (type == StatsType.PORT_STATS) {
-                attachPortLoad(tlink);
+                attachPortLoad(tlink, BYTES);
+            } else if (type == StatsType.PORT_PACKET_STATS) {
+                attachPortLoad(tlink, PACKETS);
             }
 
             // we only want to report on links deemed to have traffic
@@ -484,15 +495,14 @@ public class TrafficMonitor extends AbstractTopoMonitor {
         link.addLoad(getLinkFlowLoad(link.two()));
     }
 
-    private void attachPortLoad(TrafficLink link) {
+    private void attachPortLoad(TrafficLink link, MetricType metricType) {
         // For bi-directional traffic links, use
         // the max link rate of either direction
         // (we choose 'one' since we know that is never null)
         Link one = link.one();
-        Load egressSrc = servicesBundle.portStatsService().load(one.src());
-        Load egressDst = servicesBundle.portStatsService().load(one.dst());
-        link.addLoad(maxLoad(egressSrc, egressDst), BPS_THRESHOLD);
-//        link.addLoad(maxLoad(egressSrc, egressDst), 10);    // DEBUG ONLY!!
+        Load egressSrc = servicesBundle.portStatsService().load(one.src(), metricType);
+        Load egressDst = servicesBundle.portStatsService().load(one.dst(), metricType);
+        link.addLoad(maxLoad(egressSrc, egressDst), metricType == BYTES ? BPS_THRESHOLD : 0);
     }
 
     private Load maxLoad(Load a, Load b) {
@@ -674,11 +684,14 @@ public class TrafficMonitor extends AbstractTopoMonitor {
         public void run() {
             try {
                 switch (mode) {
-                    case ALL_FLOW_TRAFFIC:
+                    case ALL_FLOW_TRAFFIC_BYTES:
                         sendAllFlowTraffic();
                         break;
-                    case ALL_PORT_TRAFFIC:
-                        sendAllPortTraffic();
+                    case ALL_PORT_TRAFFIC_BIT_PS:
+                        sendAllPortTraffic(StatsType.PORT_STATS);
+                        break;
+                    case ALL_PORT_TRAFFIC_PKT_PS:
+                        sendAllPortTraffic(StatsType.PORT_PACKET_STATS);
                         break;
                     case DEV_LINK_FLOWS:
                         sendDeviceLinkFlows();

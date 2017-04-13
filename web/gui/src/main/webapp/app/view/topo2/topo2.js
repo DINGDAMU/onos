@@ -32,7 +32,7 @@
 
     // Internal state
     var zoomer,
-        currentLayoutId = '_default_';  // NOTE: see UiTopoLayoutId.DEFAULT_STR
+        currentLayoutId = 'root';  // NOTE: see UiTopoLayoutId.DEFAULT_STR
 
 
     // --- Glyphs, Icons, and the like -----------------------------------
@@ -73,6 +73,9 @@
                 offsetY: tr[1]
             };
 
+        // Allow map service to react to change in zoom parameters
+        t2ms.zoomCallback(sc, tr);
+
         // Note: Meta data stored in the context of the current layout,
         //       automatically, by the server
 
@@ -105,6 +108,7 @@
         'Topo2BreadcrumbService', 'Topo2KeyCommandService', 'Topo2MapService',
         'Topo2MapConfigService', 'Topo2ZoomService', 'Topo2SpriteLayerService',
         'Topo2SummaryPanelService', 'Topo2DeviceDetailsPanel', 'Topo2ToolbarService',
+        'Topo2NoDevicesConnectedService',
 
         function (
             _$scope_, _$log_, _$loc_,
@@ -114,7 +118,7 @@
             _t2es_, _t2fs_, _t2is_,
             _t2bcs_, _t2kcs_, _t2ms_,
             _t2mcs_, _t2zs_, t2sls,
-            summaryPanel, detailsPanel, t2tbs
+            summaryPanel, detailsPanel, t2tbs, t2ndcs
         ) {
             var params = _$loc_.search(),
                 dim,
@@ -191,6 +195,8 @@
             setUpKeys();
             setUpZoom();
             setUpDefs();
+
+            t2ndcs.init();
 
             // make sure we can respond to topology events from the server
             t2es.bindHandlers();

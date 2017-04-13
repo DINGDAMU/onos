@@ -30,6 +30,7 @@
     <description>PCE as central controller</description>
 
     <modules>
+        <module>bandwidthmgmt</module>
         <module>app</module>
         <module>pceweb</module>
         <module>pcerest</module>
