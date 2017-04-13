@@ -65,8 +65,8 @@
         return ps.getPrefs(
             'topo2_mapid',
             {
-                mapid: 'usa',
-                mapscale: 1,
+                mapid: 'italy',
+                mapscale: 0.8,
                 mapfilepath: '*continental_us',
                 tint: 'off'
             },
