@@ -6,6 +6,7 @@ COMPILE_DEPS = [
     '//incubator/api:onos-incubator-api',
     '//cli:onos-cli',
     '//utils/osgi:onlab-osgi',
+    '//core/common:onos-core-common',
 ]
 
 

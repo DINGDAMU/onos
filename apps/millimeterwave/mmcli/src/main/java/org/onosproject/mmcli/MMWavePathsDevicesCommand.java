@@ -114,7 +114,9 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
         }
         sb.delete(sb.lastIndexOf(SEP), sb.length());
         Weight cost = path.weight();
-        sb.append("; cost=").append(((ScalarWeight) cost).value());
+        //LinkWeight is better for this case, LinkWeigher will put two edge links' cost inside.
+        //However, the LinkWeight is deprecated
+        sb.append("; cost=").append(((ScalarWeight) cost).value() - 2 * ETHERNET_DEFAULT_COST);
         return sb.toString();
     }
 

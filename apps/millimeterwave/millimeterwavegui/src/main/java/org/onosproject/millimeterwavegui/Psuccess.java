@@ -1,10 +1,25 @@
+/*
+ * Copyright 2017-present Open Networking Laboratory
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.onosproject.millimeterwavegui;
 
 import org.apache.commons.math3.special.Erf;
 
 public final class Psuccess {
-
-    public  double getPs(double d) {
+    private Psuccess(){}
+    public  static double getPs(double d) {
         double pl = 0.0;
         double alpha = 0.0;  //dB
         double beta = 0.0;
@@ -95,15 +110,15 @@ public final class Psuccess {
         return ps;
     }
 
-    private  double qfun(double x) {
+    private  static double qfun(double x) {
         return 0.5 * Erf.erfc(x / Math.sqrt(2));
     }
 
-    private  double pcC1(double sigma, double m, double beta, double factor) {
+    private  static double pcC1(double sigma, double m, double beta, double factor) {
         return Math.pow(factor, 2 / beta) * Math.exp(2 * ((sigma * sigma) / (beta * beta)) + 2 * (m / beta));
     }
 
-    private   double pcC2(double sigma, double m, double d, double beta, double factor) {
+    private   static double pcC2(double sigma, double m, double d, double beta, double factor) {
         return qfun((sigma * sigma * (2 / beta) - Math.log(Math.pow(d, beta / factor)) + m) / sigma);
 
     }

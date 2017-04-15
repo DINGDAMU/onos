@@ -31,6 +31,7 @@ INSTALL = [
     '//core/store/persistence:onos-core-persistence-install',
     '//core/store/serializers:onos-core-serializers-install',
 
+
     '//incubator/net:onos-incubator-net-install',
     '//incubator/core:onos-incubator-core-install',
     '//incubator/store:onos-incubator-store-install',
