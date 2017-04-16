@@ -133,8 +133,7 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
             try {
 
                 if (v != null) {
-                    Psuccess psuccess = new Psuccess();
-                    double ps = psuccess.getPs(Double.parseDouble(v));
+                    double ps = Psuccess.getPs(Double.parseDouble(v));
                     return new ScalarWeight(1 + 1 / ps);
                 } else {
                     return ETHERNET_DEFAULT_WEIGHT;
