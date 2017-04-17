@@ -125,7 +125,6 @@ public  class MMwaveLinkProvider extends AbstractProvider
 
 
 
-
     @Activate
     protected void activate() {
         appId = coreService.registerApplication(APP_NAME);
@@ -211,6 +210,7 @@ public  class MMwaveLinkProvider extends AbstractProvider
                         LinkDescription description1 = new DefaultLinkDescription(dst, src, link.type(), annotations);
                         linkProviderService.linkDetected(description);
                         linkProviderService.linkDetected(description1);
+
                     }
                 });
             } catch (ConfigException e) {

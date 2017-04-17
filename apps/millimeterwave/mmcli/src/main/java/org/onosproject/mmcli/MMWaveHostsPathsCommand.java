@@ -27,14 +27,11 @@ import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
 import org.onosproject.cli.AbstractShellCommand;
 import org.onosproject.cli.net.LinksListCommand;
-import org.onosproject.common.DefaultTopologyGraph;
 import org.onosproject.net.Host;
 import org.onosproject.net.DefaultEdgeLink;
 import org.onosproject.net.EdgeLink;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.PortNumber;
-import org.onosproject.net.device.DeviceService;
-import org.onosproject.net.link.LinkService;
 import org.onosproject.net.host.HostService;
 import org.onosproject.net.provider.ProviderId;
 import org.onosproject.net.DefaultPath;
@@ -44,11 +41,9 @@ import org.onosproject.net.Link;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
 import org.onosproject.net.topology.TopologyGraph;
+import org.onosproject.net.topology.TopologyService;
 import org.onosproject.net.topology.TopologyVertex;
-import org.onosproject.net.topology.GraphDescription;
-import org.onosproject.net.topology.DefaultGraphDescription;
 import org.onosproject.net.topology.DefaultTopologyVertex;
-//import org.onlab.graph.EdgeWeigher;
 import org.onosproject.net.topology.LinkWeigher;
 
 import java.util.HashSet;
@@ -67,7 +62,10 @@ import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
     private static final int ETHERNET_DEFAULT_COST = 101;
-    private static final double PACKET_LOSS_CONSTRAINT = 0.2;
+    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.1;
+    private static final int DEFAULT_MAX_PATHS = 5;
+
+
     /**
      * Default weight based on ETHERNET default weight.
      */
@@ -92,41 +90,43 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
 
     protected PathService pathService;
     protected HostService hostService;
-    protected DeviceService deviceService;
-    protected LinkService linkService;
+    protected TopologyService topologyService;
     protected TopologyGraph graph;
     protected double totalPs = 1;
     protected double totalLoss;
+    protected int maxpaths;
+    protected double packetlossconstraint;
 
 
-    //In our case we need to use pathService (ElementID is more comfortable than DeviceID in Topology.getPath() case)
     protected void init() {
         pathService = get(PathService.class);
         hostService = get(HostService.class);
-        deviceService = get(DeviceService.class);
-        linkService = get(LinkService.class);
+        topologyService = get(TopologyService.class);
     }
     @Override
     protected void execute() {
-
         init();
         HostId src = HostId.hostId(srcArg);
         HostId dst = HostId.hostId(dstArg);
         Host srchost = hostService.getHost(src);
         Host dsthost = hostService.getHost(dst);
+        if (srchost.annotations().value("maxptahs") != null) {
+            maxpaths = Integer.valueOf(srchost.annotations().value("maxpaths"));
+        } else {
+            maxpaths = DEFAULT_MAX_PATHS;
+        }
+        if (srchost.annotations().value("packetlossconstraint") != null) {
+             packetlossconstraint = Double.parseDouble(srchost.annotations().value("packetlossconstraint"));
+        } else {
+            packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
+        }
         DeviceId srcLoc = srchost.location().deviceId();
         DeviceId dstLoc = dsthost.location().deviceId();
-        long nanos = System.nanoTime();
-        long millis = System.currentTimeMillis();
-        GraphDescription desc = new DefaultGraphDescription(nanos, millis,
-                deviceService.getAvailableDevices(),
-                linkService.getActiveLinks());
-        graph = new DefaultTopologyGraph(desc.vertexes(), desc.edges());
+        graph = topologyService.getGraph(topologyService.currentTopology());
         DefaultTopologyVertex srcV = new DefaultTopologyVertex(srcLoc);
         DefaultTopologyVertex dstV = new DefaultTopologyVertex(dstLoc);
-//        MMwaveEdgeWeight w = new MMwaveEdgeWeight();
         MMwaveLinkWeight w = new MMwaveLinkWeight();
-        Set<Path<TopologyVertex, TopologyEdge>> paths = KSP.search(graph, srcV, dstV, w, 8).paths();
+        Set<Path<TopologyVertex, TopologyEdge>> paths = KSP.search(graph, srcV, dstV, w, maxpaths).paths();
         if (paths.isEmpty()) {
             print("The path is empty!");
             return;
@@ -146,7 +146,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                 }
             }
             totalLoss = 1 - totalPs;
-            if (totalLoss > PACKET_LOSS_CONSTRAINT) {
+            if (totalLoss > packetlossconstraint) {
                 totalPs = 1;
             } else {
                 result.add(potentialpath);
@@ -158,11 +158,12 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             } else if (filter) {
                 for (Path path : result) {
                     String loss = String.valueOf((int) (totalLoss * 100)) + "%";
-                    String constraint = String.valueOf(PACKET_LOSS_CONSTRAINT * 100) + "%";
+                    String constraint = String.valueOf(packetlossconstraint * 100) + "%";
                     print("The total packet loss is %s below %s", loss, constraint);
                     print(pathString(path, srclink, dstlink));
                 }
             } else {
+                print("There are %s available paths, the maximum of paths is %s", paths.size(), maxpaths);
                 for (Path path : paths) {
                     print(pathString(path, srclink, dstlink));
                 }
@@ -176,7 +177,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
      * @param paths collection of paths
      * @return JSON array
      */
-    public static JsonNode json(AbstractShellCommand context, Iterable<Path<TopologyVertex, TopologyEdge>> paths) {
+    private static JsonNode json(AbstractShellCommand context, Iterable<Path<TopologyVertex, TopologyEdge>> paths) {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode result = mapper.createArrayNode();
         for (Path path : paths) {
@@ -208,45 +209,9 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         sb.append("; cost=").append(((ScalarWeight) cost).value());
         return sb.toString();
     }
-
-//    class MMwaveEdgeWeight implements EdgeWeigher<TopologyVertex, TopologyEdge> {
-//
-//
-//
-//        @Override
-//        public Weight weight(TopologyEdge edge) {
-//            //AnnotationKeys
-//            //This can help us to define cost function by annotations
-//            String v = edge.link().annotations().value("length");
-//
-//
-//            try {
-//
-//                if (v != null) {
-//                    double ps = Psuccess.getPs(Double.parseDouble(v));
-//                    return new ScalarWeight(1 + 1 / ps);
-//                } else {
-//                    return ETHERNET_DEFAULT_WEIGHT;
-//                }
-//                //total cost = fixed cost + dynamic cost
-//                // In Ethernet case, total cost = 100 + 1; (ps = 100%)
-//                // In mm-wave case, total cost = 1 + 1/ps;
-//            } catch (NumberFormatException e) {
-//                return null;
-//            }
-//        }
-//
-//        @Override
-//        public Weight getInitialWeight() {
-//            return ETHERNET_DEFAULT_WEIGHT;
-//        }
-//
-//        @Override
-//        public Weight getNonViableWeight() {
-//            return ScalarWeight.NON_VIABLE_WEIGHT;
-//        }
-//    }
-
+    /**
+      *  LinkWeight on each Edge.
+     **/
     class MMwaveLinkWeight implements LinkWeigher {
 
         @Override
@@ -291,9 +256,9 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
      * Generate EdgeLink which is between Host and Device.
      *
      *
-     * @param host
+     * @param host the host to use
      * @param isIngress whether it is Ingress to Device or not.
-     * @return
+     * @return the connected Edgelink
      */
     private EdgeLink getEdgeLink(Host host, boolean isIngress) {
         return new DefaultEdgeLink(providerId, new ConnectPoint(host.id(), PortNumber.portNumber(0)),
@@ -312,9 +277,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     }
     // Converts graphs edge to links
     private static List<Link> getLinks(org.onlab.graph.Path<TopologyVertex, TopologyEdge> path) {
-        List<Link> links = path.edges().stream().map(TopologyEdge::link)
+        return path.edges().stream().map(TopologyEdge::link)
                 .collect(Collectors.toList());
-        return links;
     }
     // Converts graph path to a network path with the same cost.
     private static org.onosproject.net.Path networkPath(org.onlab.graph.Path<TopologyVertex, TopologyEdge> path) {

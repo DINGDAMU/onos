@@ -3,6 +3,7 @@ BUNDLES = [
     '//apps/millimeterwave/millimeterwaveport:onos-apps-millimeterwave-millimeterwaveport',
     '//apps/millimeterwave/mmcli:onos-apps-millimeterwave-mmcli',
     '//apps/millimeterwave/millimeterwavegui:onos-apps-millimeterwave-millimeterwavegui',
+    '//apps/millimeterwave/millimeterwavehost:onos-apps-millimeterwave-millimeterwavehost',
 ]
 
 onos_app (
