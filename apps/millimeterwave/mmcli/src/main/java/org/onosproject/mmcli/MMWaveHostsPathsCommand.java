@@ -94,8 +94,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     protected TopologyGraph graph;
     protected double totalPs = 1;
     protected double totalLoss;
-    protected int maxpaths;
-    protected double packetlossconstraint;
+    protected int maxpaths = DEFAULT_MAX_PATHS;
+    protected double packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
 
 
     protected void init() {
@@ -110,15 +110,11 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         HostId dst = HostId.hostId(dstArg);
         Host srchost = hostService.getHost(src);
         Host dsthost = hostService.getHost(dst);
-        if (srchost.annotations().value("maxptahs") != null) {
+        if (srchost.annotations().value("maxpaths") != null) {
             maxpaths = Integer.valueOf(srchost.annotations().value("maxpaths"));
-        } else {
-            maxpaths = DEFAULT_MAX_PATHS;
         }
         if (srchost.annotations().value("packetlossconstraint") != null) {
              packetlossconstraint = Double.parseDouble(srchost.annotations().value("packetlossconstraint"));
-        } else {
-            packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
         }
         DeviceId srcLoc = srchost.location().deviceId();
         DeviceId dstLoc = dsthost.location().deviceId();

@@ -45,7 +45,7 @@
         <module>millimeterwaveport</module>
         <module>mmcli</module>
         <module>millimeterwavegui</module>
-        <module>millimeterwavegraph</module>
+        <module>millimeterwavehost</module>
         <module>app</module>
     </modules>
 

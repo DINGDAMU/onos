@@ -16,7 +16,10 @@
 package org.onosproject.millimeterwavegui;
 
 import org.onosproject.net.DeviceId;
+import org.onosproject.net.Host;
+import org.onosproject.net.HostId;
 import org.onosproject.net.Link;
+import org.onosproject.net.host.HostService;
 import org.onosproject.net.link.LinkEvent;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.ui.UiTopoOverlay;
@@ -51,16 +54,25 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
     private static final String MY_TITLE = "Millimeter wave app";
     private static final String MMWAVE_LINKS = "MM-wave links";
     private static final String ETHERNET_LINKS = "Ethernet links";
+    private static final String MAX_PATHS = "MAX paths";
+    private static final String PACKET_LOSS_CONSTRAINT = "Packet loss constraint";
+    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.1;
+    private static final int DEFAULT_MAX_PATHS = 5;
+
+
 
 
     private LinkService linkService;
+    private HostService hostService;
 
 
     private static final ButtonId FOO_BUTTON = new ButtonId("foo");
     private static final ButtonId BAR_BUTTON = new ButtonId("bar");
 
-    int mmwavelinknum;
-    int ethernetlinknum;
+    private int mmwavelinknum;
+    private int ethernetlinknum;
+    private int maxpaths;
+    private double packetlossconstraint;
 
 
 
@@ -136,6 +148,24 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
             additional.put("Capacity", "default");
         }
         return additional;
+
+    }
+
+    @Override
+    public void modifyHostDetails(PropertyPanel pp, HostId hostId) {
+        hostService = get(HostService.class);
+        Host host = hostService.getHost(hostId);
+        if (host.annotations().value("maxpaths") != null) {
+            maxpaths = Integer.valueOf(host.annotations().value("maxpaths"));
+        } else {
+            maxpaths = DEFAULT_MAX_PATHS;
+        }
+        if (host.annotations().value("packetlossconstraint") != null) {
+            packetlossconstraint = Double.parseDouble(host.annotations().value("packetlossconstraint"));
+        } else {
+            packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
+        }
+        pp.addProp(MAX_PATHS, maxpaths).addProp(PACKET_LOSS_CONSTRAINT, (packetlossconstraint * 100) + "%");
 
     }
 
