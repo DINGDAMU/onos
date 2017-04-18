@@ -65,7 +65,7 @@ public class KShortestPathsSearch<V extends Vertex, E extends Edge<V>> extends A
 
         for (int k = 1; k < maxPaths; k++) {
 
-            for (int i = 0; i < (resultPaths.get(k - 1).edges().size() - 1); i++) {
+            for (int i = 0; i < (resultPaths.get(k - 1).edges().size()); i++) {
                 V spurNode = resultPaths.get(k - 1).edges().get(i).src();
                 List<E> rootPathEdgeList = resultPaths.get(k - 1).edges().subList(0, i);
 

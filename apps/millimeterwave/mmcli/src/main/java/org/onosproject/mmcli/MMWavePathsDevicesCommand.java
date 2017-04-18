@@ -39,12 +39,16 @@ import static org.onosproject.cli.net.LinksListCommand.compactLinkString;
         description = "calculate shortest path betweeen devices with own customized link weight")
 public class MMWavePathsDevicesCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
-    public static final int ETHERNET_DEFAULT_COST = 101;
+    public static final double ETHERNET_DEFAULT_COST = 101;
+    private static final double INITIAL_COST = 0;
+
     /**
      * Default weight based on ETHERNET default weight.
      */
     public static final ScalarWeight ETHERNET_DEFAULT_WEIGHT =
             new ScalarWeight(ETHERNET_DEFAULT_COST);
+    public static final ScalarWeight INITIAL_WEIGHT =
+            new ScalarWeight(INITIAL_COST);
     @Argument(index = 0, name = "src", description = "Source device ID",
             required = true, multiValued = false)
     String srcArg = null;
@@ -114,9 +118,7 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
         }
         sb.delete(sb.lastIndexOf(SEP), sb.length());
         Weight cost = path.weight();
-        //LinkWeight is better for this case, LinkWeigher will put two edge links' cost inside.
-        //However, the LinkWeight is deprecated
-        sb.append("; cost=").append(((ScalarWeight) cost).value() - 2 * ETHERNET_DEFAULT_COST);
+        sb.append("; cost=").append(((ScalarWeight) cost).value());
         return sb.toString();
     }
 
@@ -139,7 +141,7 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
                     return ETHERNET_DEFAULT_WEIGHT;
                 }
                 //total cost = fixed cost + dynamic cost
-                // In Ethernet case, total cost = 100 + 1; (ps = 1)
+                // In Ethernet case, total cost = 100 + 1; (ps = 100%)
                 // In mm-wave case, total cost = 1 + 1/ps;
             } catch (NumberFormatException e) {
                 return null;
@@ -148,7 +150,7 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
 
         @Override
         public Weight getInitialWeight() {
-            return ETHERNET_DEFAULT_WEIGHT;
+            return INITIAL_WEIGHT;
         }
 
         /**

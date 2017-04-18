@@ -61,9 +61,10 @@ import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
         description = "calculate shortest path between hosts with own customized link weight")
 public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
-    private static final int ETHERNET_DEFAULT_COST = 101;
+    private static final double ETHERNET_DEFAULT_COST = 101.0;
+    private static final double INITIAL_COST = 0.0;
     private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.1;
-    private static final int DEFAULT_MAX_PATHS = 5;
+    private static final int DEFAULT_MAX_PATHS = 10;
 
 
     /**
@@ -71,6 +72,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
      */
     public static final ScalarWeight ETHERNET_DEFAULT_WEIGHT =
             new ScalarWeight(ETHERNET_DEFAULT_COST);
+    public static final ScalarWeight INITIAL_WEIGHT =
+            new ScalarWeight(INITIAL_COST);
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
             new KShortestPathsSearch<>();
     private final ProviderId providerId = new ProviderId("FNL", "Ding");
@@ -92,10 +95,12 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     protected HostService hostService;
     protected TopologyService topologyService;
     protected TopologyGraph graph;
-    protected double totalPs = 1;
+    protected double totalPs = 1.0;
     protected double totalLoss;
     protected int maxpaths = DEFAULT_MAX_PATHS;
     protected double packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
+    protected static double costsrc = 0.0;
+    protected static double costdst = 0.0;
 
 
     protected void init() {
@@ -128,9 +133,12 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             return;
         }
         Link srclink = getEdgeLink(srchost, true);
+        costsrc = ((ScalarWeight) getWeight(srclink)).value();
         Link dstlink = getEdgeLink(dsthost, false);
+        costdst = ((ScalarWeight) getWeight(dstlink)).value();
         Set<Path<TopologyVertex, TopologyEdge>> result = new HashSet<>();
         Iterator<Path<TopologyVertex, TopologyEdge>> it = paths.iterator();
+        //Here is not good to use foreach() because we can't break it.
         while (it.hasNext()) {
             Path potentialpath = it.next();
             List<Link> pathlinks = getLinks(potentialpath);
@@ -142,6 +150,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                 }
             }
             totalLoss = 1 - totalPs;
+            // If the path's loss is higher than the constraint, continue.
+            // Otherwise put it to the result and go out of the loop.
             if (totalLoss > packetlossconstraint) {
                 totalPs = 1;
             } else {
@@ -179,7 +189,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         for (Path path : paths) {
             Weight cost = path.cost();
             result.add(LinksListCommand.json(context, networkPath(path))
-                               .put("cost", ((ScalarWeight) cost).value())
+                               .put("cost", ((ScalarWeight) cost).value() + costsrc + costdst)
                                .set("links", LinksListCommand.json(context, getLinks(path))));
         }
         return result;
@@ -202,7 +212,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         }
         sb.append(compactaDstEdgeLinkString(dstlink));
         Weight cost = path.cost();
-        sb.append("; cost=").append(((ScalarWeight) cost).value());
+        sb.append("; cost=").append(((ScalarWeight) cost).value() + costsrc + costdst);
         return sb.toString();
     }
     /**
@@ -213,30 +223,12 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         @Override
         public Weight weight(TopologyEdge edge) {
 
-            //AnnotationKeys
-            //This can help us to define cost function by annotations
-            String v = edge.link().annotations().value("length");
-
-
-            try {
-
-                if (v != null) {
-                    double ps = Psuccess.getPs(Double.parseDouble(v));
-                    return new ScalarWeight(1 + 1 / ps);
-                } else {
-                    return ETHERNET_DEFAULT_WEIGHT;
-                }
-                //total cost = fixed cost + dynamic cost
-                // In Ethernet case, total cost = 100 + 1; (ps = 100%)
-                // In mm-wave case, total cost = 1 + 1/ps;
-            } catch (NumberFormatException e) {
-                return null;
-            }
+           return getWeight(edge.link());
         }
 
         @Override
         public Weight getInitialWeight() {
-            return ETHERNET_DEFAULT_WEIGHT;
+            return INITIAL_WEIGHT;
         }
 
         /**
@@ -281,5 +273,21 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         List<Link> links = path.edges().stream().map(TopologyEdge::link)
                 .collect(Collectors.toList());
         return new DefaultPath(CORE_PROVIDER_ID, links, path.cost());
+    }
+    private static Weight getWeight(Link link) {
+        String v = link.annotations().value("length");
+        try {
+            if (v != null) {
+                double ps = Psuccess.getPs(Double.parseDouble(v));
+                return new ScalarWeight(1 + 1 / ps);
+            } else {
+                return ETHERNET_DEFAULT_WEIGHT;
+            }
+            //total cost = fixed cost + dynamic cost
+            // In Ethernet case, total cost = 100 + 1; (ps = 100%)
+            // In mm-wave case, total cost = 1 + 1/ps;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }
