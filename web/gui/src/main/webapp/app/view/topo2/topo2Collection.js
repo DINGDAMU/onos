@@ -26,10 +26,12 @@
 
     function Collection(models, options) {
 
-        var opts = options || (options = {});
+        var opts = options || {};
 
         this.models = [];
         this._reset();
+
+        this.initialize.apply(this, arguments);
 
         if (opts.comparator) {
             this.comparator = opts.comparator;
@@ -42,6 +44,7 @@
 
     Collection.prototype = {
         model: Model,
+        initialize: function () {},
         addModel: function (data) {
             if (Object.getPrototypeOf(data) !== Object.prototype) {
                 this.models.push(data);

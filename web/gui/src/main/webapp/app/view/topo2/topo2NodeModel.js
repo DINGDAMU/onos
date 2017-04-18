@@ -22,7 +22,7 @@
 (function () {
     'use strict';
 
-    var ps, sus, is, ts, t2mcs, t2nps, fn;
+    var t2ps, sus, is, ts, t2mcs, t2nps, fn;
 
     var devIconDim = 36,
         devIconDimMin = 20,
@@ -54,13 +54,13 @@
         'Topo2Model', 'FnService', 'Topo2PrefsService',
         'SvgUtilService', 'IconService', 'ThemeService',
         'Topo2MapConfigService', 'Topo2ZoomService', 'Topo2NodePositionService',
-        'Topo2SelectService',
-        function (Model, _fn_, _ps_, _sus_, _is_, _ts_,
-            _t2mcs_, zoomService, _t2nps_, t2ss) {
+        'Topo2SelectService', 'Topo2MastershipService',
+        function (Model, _fn_, _t2ps_, _sus_, _is_, _ts_,
+            _t2mcs_, zoomService, _t2nps_, t2ss, t2mss) {
 
             ts = _ts_;
             fn = _fn_;
-            ps = _ps_;
+            t2ps = _t2ps_;
             sus = _sus_;
             is = _is_;
             t2mcs = _t2mcs_;
@@ -69,6 +69,7 @@
             return Model.extend({
                 initialize: function () {
                     this.node = this.createNode();
+                    this.mastershipService = t2mss;
                     this._events = {
                         'mouseover': 'mouseoverHandler',
                         'mouseout': 'mouseoutHandler'
@@ -123,7 +124,7 @@
                     return 'unknown';
                 },
                 labelIndex: function () {
-                    return ps.get('dlbls');
+                    return t2ps.get('dlbls');
                 },
                 label: function () {
                     var props = this.get('props'),
@@ -149,28 +150,6 @@
                         otag = o ? 'online' : 'offline';
                     return o ? sus.cat7().getColor(id, 0, ts.theme()) :
                         dColTheme[ts.theme()][otag];
-                },
-                addLabelElements: function (label) {
-                    var rect = this.el.append('rect')
-                        .attr('class', 'node-container');
-                    var glythRect = this.el.append('rect')
-                        .attr('class', 'icon-rect')
-                        .attr('y', -halfDevIcon)
-                        .attr('x', -halfDevIcon)
-                        .attr('width', devIconDim)
-                        .attr('height', devIconDim)
-                        .style('fill', this.devGlyphColor.bind(this));
-
-                    var text = this.el.append('text').text(label)
-                        .attr('text-anchor', 'left')
-                        .attr('y', '0.3em')
-                        .attr('x', halfDevIcon + labelPad + textPad);
-
-                    return {
-                        rect: rect,
-                        glythRect: glythRect,
-                        text: text
-                    };
                 },
                 labelBox: function (dim, labelWidth) {
                     var _textPad = (textPad * 2) - labelPad;
@@ -202,7 +181,8 @@
                             online: this.get('online'),
                             selected: this.get('selected'),
                             hovered: this.get('hovered'),
-                            fixed: this.get('fixed')
+                            fixed: this.get('fixed'),
+                            suppressedmax: this.get('mastership')
                         }
                     );
                 },
@@ -212,6 +192,9 @@
                 },
                 resetPosition: function () {
                     t2nps.setLongLat(this);
+                },
+                displayMastership: function () {
+                    this.set({ mastership: t2mss.mastership() !== null});
                 },
                 update: function () {
                     this.updateLabel();
@@ -245,14 +228,56 @@
                         multipler = devIconDimMax / (dim * zoomService.scale());
                     }
 
-                    this.el.selectAll('*')
+                    this.el.select('.node-content')
                         .style('transform', 'scale(' + multipler + ')');
+                },
+                addLabelElements: function (label) {
+
+                    var labelG = this.el.select('.node-content')
+                        .append('g')
+                        .attr('class', 'label');
+
+                    var rect = labelG.append('rect')
+                        .attr('class', 'node-container');
+
+                    var text = labelG.append('text').text(label)
+                        .attr('text-anchor', 'left')
+                        .attr('y', '0.3em')
+                        .attr('x', halfDevIcon + labelPad + textPad);
+
+                    return {
+                        rect: rect,
+                        text: text
+                    };
+                },
+                addIconElements: function (el) {
+
+                    var glyphId = this.icon(this.get('type')),
+                        glyph;
+
+                    var iconG = el.append('g')
+                        .attr('class', 'icon')
+
+                    iconG.append('rect')
+                        .attr('class', 'icon-rect')
+                        .attr('y', -halfDevIcon)
+                        .attr('x', -halfDevIcon)
+                        .attr('width', devIconDim)
+                        .attr('height', devIconDim)
+                        .style('fill', this.devGlyphColor.bind(this));
+
+                    // Icon
+                    glyph = is.addDeviceIcon(iconG, glyphId, devIconDim);
+                    glyph.attr(this.iconBox(devIconDim, 0));
+                    glyph.style('fill', dUseTheme[ts.theme()]);
                 },
                 render: function () {
                     var node = this.el,
-                        glyphId = this.icon(this.get('type')),
                         label = this.trimLabel(this.label()),
-                        glyph, labelWidth;
+                        labelWidth;
+
+                    var nodeG = node.append('g')
+                        .attr('class', 'node-content');
 
                     // Label
                     var labelElements = this.addLabelElements(label);
@@ -260,10 +285,7 @@
                     labelElements.rect
                         .attr(this.labelBox(devIconDim, labelWidth));
 
-                    // Icon
-                    glyph = is.addDeviceIcon(node, glyphId, devIconDim);
-                    glyph.attr(this.iconBox(devIconDim, 0));
-                    glyph.style('fill', dUseTheme[ts.theme()]);
+                    this.addIconElements(nodeG);
 
                     node.attr('transform',
                         sus.translate(-halfDevIcon, -halfDevIcon));
@@ -273,7 +295,10 @@
                     }
 
                     this.setScale();
-                }
+                },
+
+                // Override Methods
+                setOfflineVisibility: function () {},
             });
         }]
     );

@@ -29,7 +29,7 @@
         virtual: 'cord'
     };
 
-    function createDeviceCollection(data, region) {
+    function createDeviceCollection(data) {
 
         var DeviceCollection = Collection.extend({
             model: Model
@@ -46,9 +46,10 @@
     }
 
     angular.module('ovTopo2')
-    .factory('Topo2DeviceService',
-        ['Topo2Collection', 'Topo2NodeModel', 'Topo2DeviceDetailsPanel', 'Topo2SelectService',
-            function (_c_, _nm_, detailsPanel, t2ss) {
+    .factory('Topo2DeviceService', [
+            'Topo2Collection', 'Topo2NodeModel', 'Topo2DeviceDetailsPanel',
+            'PrefsService',
+            function (_c_, _nm_, detailsPanel, ps) {
 
                 Collection = _c_;
 
@@ -64,11 +65,13 @@
                         this.super = this.constructor.__super__;
                         this.super.initialize.apply(this, arguments);
                     },
-                    onChange: function (change) {
+                    onChange: function () {
                         if (this.el) {
                             this.el.attr('class', this.svgClassName());
                             var rect = this.el.select('.icon-rect');
                             rect.style('fill', this.devGlyphColor());
+
+                            this.setOfflineVisibility();
                         }
                     },
                     icon: function () {
@@ -80,6 +83,17 @@
                             nodeType = this.get('nodeType');
                         detailsPanel.updateDetails(id, nodeType);
                         detailsPanel.show();
+                    },
+                    displayMastership: function () {
+                        var id = this.mastershipService.mastership(),
+                            suppress = id ? this.get('master') !== id : false;
+
+                        this.set({mastership: suppress});
+                    },
+                    setOfflineVisibility: function () {
+                        var showOffline = ps.getPrefs('topo2_prefs')['offline_devices'],
+                            display = this.get('online') || showOffline;
+                        this.el.style('visibility', display ? 'visible' : 'hidden');
                     },
                     onExit: function () {
                         var node = this.el;

@@ -40,6 +40,7 @@ import org.onosproject.ui.model.topo.UiEdgeLink;
 import org.onosproject.ui.model.topo.UiElement;
 import org.onosproject.ui.model.topo.UiHost;
 import org.onosproject.ui.model.topo.UiLinkId;
+import org.onosproject.ui.model.topo.UiModelEvent;
 import org.onosproject.ui.model.topo.UiRegion;
 import org.onosproject.ui.model.topo.UiSynthLink;
 import org.onosproject.ui.model.topo.UiTopoLayout;
@@ -53,17 +54,17 @@ import java.util.List;
 import java.util.Set;
 
 import static org.onosproject.net.DefaultEdgeLink.createEdgeLink;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.CLUSTER_MEMBER_ADDED_OR_UPDATED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.CLUSTER_MEMBER_REMOVED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.DEVICE_ADDED_OR_UPDATED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.DEVICE_REMOVED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.HOST_ADDED_OR_UPDATED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.HOST_MOVED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.HOST_REMOVED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.LINK_ADDED_OR_UPDATED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.LINK_REMOVED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.REGION_ADDED_OR_UPDATED;
-import static org.onosproject.ui.impl.topo.model.UiModelEvent.Type.REGION_REMOVED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.CLUSTER_MEMBER_ADDED_OR_UPDATED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.CLUSTER_MEMBER_REMOVED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.DEVICE_ADDED_OR_UPDATED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.DEVICE_REMOVED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.HOST_ADDED_OR_UPDATED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.HOST_MOVED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.HOST_REMOVED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.LINK_ADDED_OR_UPDATED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.LINK_REMOVED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.REGION_ADDED_OR_UPDATED;
+import static org.onosproject.ui.model.topo.UiModelEvent.Type.REGION_REMOVED;
 import static org.onosproject.ui.model.topo.UiLinkId.uiLinkId;
 
 /**
@@ -85,13 +86,14 @@ class ModelCache {
 
     private final ServiceBundle services;
     private final EventDispatcher dispatcher;
-    private final UiTopology uiTopology = new UiTopology();
+    private final UiTopology uiTopology;
 
     private Topo2Jsonifier t2json;
 
     ModelCache(ServiceBundle services, EventDispatcher eventDispatcher) {
         this.services = services;
         this.dispatcher = eventDispatcher;
+        uiTopology = new UiTopology(services);
     }
 
     @Override
