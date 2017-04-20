@@ -63,7 +63,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
     private static final double ETHERNET_DEFAULT_COST = 101.0;
     private static final double INITIAL_COST = 0.0;
-    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.1;
+    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.2;
     private static final int DEFAULT_MAX_PATHS = 10;
 
 
@@ -115,12 +115,6 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         HostId dst = HostId.hostId(dstArg);
         Host srchost = hostService.getHost(src);
         Host dsthost = hostService.getHost(dst);
-        if (srchost.annotations().value("maxpaths") != null) {
-            maxpaths = Integer.valueOf(srchost.annotations().value("maxpaths"));
-        }
-        if (srchost.annotations().value("packetlossconstraint") != null) {
-             packetlossconstraint = Double.parseDouble(srchost.annotations().value("packetlossconstraint"));
-        }
         DeviceId srcLoc = srchost.location().deviceId();
         DeviceId dstLoc = dsthost.location().deviceId();
         graph = topologyService.getGraph(topologyService.currentTopology());
