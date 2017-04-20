@@ -162,17 +162,21 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             if (outputJson()) {
                 print("%s", json(this, result));
             } else if (filter) {
-                for (Path path : result) {
-                    String loss = String.valueOf((int) (totalLoss * 100)) + "%";
-                    String constraint = String.valueOf(packetlossconstraint * 100) + "%";
-                    print("The total packet loss is %s below %s", loss, constraint);
-                    print(pathString(path, srclink, dstlink));
-                }
+                 if (!result.isEmpty()) {
+                    for (Path path : result) {
+                        String loss = String.valueOf((int) (totalLoss * 100)) + "%";
+                        String constraint = String.valueOf(packetlossconstraint * 100) + "%";
+                        print("The total packet loss is %s below %s", loss, constraint);
+                        print(pathString(path, srclink, dstlink));
+                     }
+                    } else {
+                        print("No path satisfies the packet loss constraint!");
+                    }
             } else {
-                print("There are %s available paths, the maximum of paths is %s", paths.size(), maxpaths);
                 for (Path path : paths) {
                     print(pathString(path, srclink, dstlink));
                 }
+                print("There are %s available paths, the maximum of paths is %s", paths.size(), maxpaths);
             }
         }
 

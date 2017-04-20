@@ -25,7 +25,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>onos-app-mmwave-apps</artifactId>
-    <packaging>pom</packaging>
+    <packaging>bundle</packaging>
 
     <description>ONOS mmwave application</description>
 
@@ -43,6 +43,16 @@
         <dependency>
             <groupId>org.onosproject</groupId>
             <artifactId>onos-app-mmwave-mmcli</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.onosproject</groupId>
+            <artifactId>onos-app-mmwave-gui</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.onosproject</groupId>
+            <artifactId>onos-app-mmwave-host</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

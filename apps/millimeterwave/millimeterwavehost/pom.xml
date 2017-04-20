@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>onos-app-mmwave-graph</artifactId>
+    <artifactId>onos-app-mmwave-host</artifactId>
 
     <description>An ONOS application for annotations on millimeter_wave on ports</description>
     <url>http://onosproject.org</url>

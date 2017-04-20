@@ -103,6 +103,7 @@ public class KShortestPathsSearch<V extends Vertex, E extends Edge<V>> extends A
             resultPaths.add(potentialPaths.get(0));
             potentialPaths.remove(0);
         }
+
         result.pathSet.addAll(resultPaths);
 
         return result;
