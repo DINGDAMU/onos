@@ -18,17 +18,18 @@ package org.onosproject.millimeterwaveport;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.onosproject.millimeterwavehost.MMwaveHostProvider;
 
 /**
  * Set of tests of the ONOS application component.
  */
 public class MMwavePortProviderTest {
 
-    private MMwavePortProvider component;
+    private MMwaveHostProvider component;
 
     @Before
     public void setUp() {
-        component = new MMwavePortProvider();
+        component = new MMwaveHostProvider();
         //component.activate();
 
     }

@@ -12,7 +12,7 @@
 
     <artifactId>onos-app-mmwave-host</artifactId>
 
-    <description>An ONOS application for annotations on millimeter_wave on ports</description>
+    <description>An ONOS application for annotations on millimeter_wave on hosts</description>
     <url>http://onosproject.org</url>
     <dependencies>
         <dependency>

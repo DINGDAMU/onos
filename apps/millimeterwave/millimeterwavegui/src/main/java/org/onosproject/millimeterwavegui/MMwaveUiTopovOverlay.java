@@ -153,19 +153,7 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
 
     @Override
     public void modifyHostDetails(PropertyPanel pp, HostId hostId) {
-        hostService = get(HostService.class);
-        Host host = hostService.getHost(hostId);
-        if (host.annotations().value("maxpaths") != null) {
-            maxpaths = Integer.valueOf(host.annotations().value("maxpaths"));
-        } else {
-            maxpaths = DEFAULT_MAX_PATHS;
-        }
-        if (host.annotations().value("packetlossconstraint") != null) {
-            packetlossconstraint = Double.parseDouble(host.annotations().value("packetlossconstraint"));
-        } else {
-            packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
-        }
-        pp.addProp(MAX_PATHS, maxpaths).addProp(PACKET_LOSS_CONSTRAINT, (packetlossconstraint * 100) + "%");
+
 
     }
 

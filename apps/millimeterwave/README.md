@@ -37,17 +37,27 @@ BUCK will help us to automatically install it in ONOS.
 ### Add additional annotations on ports
     onos>annotate-ports <deviceID> <Port number> <Port state> <key> <value>
     
-## Find the shortest path with own custmized link weight
+## Get the K shortest paths with own custmized link weight
     onos>mmwave-devices-paths <source DeviceId> <destination DeviceId>
     onos>mmwave-hosts-path <source hostID> <source hostID>
 In our case, the cost depends from the annotation value "probablity of success".  
 total cost = fixed cost + dynamic cost  
-In Ethernet case, total cost = 100 + 1; (ps = 100%)  
+In Ethernet case, total cost = 100 + 1; (ps = 100)  
 In mm-wave case, total cost = 1 + 1/(ps/100);  
+
+
+
+### Conditions before choosing the shortest path  
+All the switches are considered as indipendent, so the total packet loss = 1 - Ps1 * Ps2 * .... (All the switches in the path).  
+The total packet loss should be less than the constraint which is given via RESTful API.
+
+    onos>mmwave-hosts-path -f <source hostID> <source hostID>  
+Filter the K shortest paths with the packet loss constraint.
 
 ## Add mm-wave intents  
     onos>mmwave-add-intents <hostId 1> <hostId 2>  
 Add the intent between host1 and host2, the path will be the shortest path which calculated by own cost instead of the default cost by **add-host-intent** command.  
+
 
 
 
@@ -72,7 +82,14 @@ Add the intent between host1 and host2, the path will be the shortest path which
         "portnumber":"1",
         "isEnabled":"true"
       }]
-     }
+     },
+     "org.onosproject.millimeterwaveport" : {
+       "hosts" : [{
+         "hostid":"mmwave",
+         "packetlossconstraint": 0.2,
+         "maxpaths": 10
+      }]
+      }
     }
 ### Configuration  
      onos>onos-netcfg <ONOS's address> <path to JSON>  
