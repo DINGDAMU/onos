@@ -15,6 +15,7 @@
  */
 package org.onosproject.net.intent.impl.compiler;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.math3.special.Erf;
@@ -26,10 +27,7 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.onlab.graph.KShortestPathsSearch;
 import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
-import org.onosproject.net.ConnectPoint;
-import org.onosproject.net.DefaultEdgeLink;
 import org.onosproject.net.DefaultPath;
-import org.onosproject.net.EdgeLink;
 import org.onosproject.net.HostId;
 import org.onosproject.net.Path;
 import org.onosproject.net.Host;
@@ -37,10 +35,9 @@ import org.onosproject.net.Link;
 import org.onosproject.net.DefaultLink;
 import org.onosproject.net.FilteredConnectPoint;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.ElementId;
-import org.onosproject.net.PortNumber;
 import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.host.HostService;
+import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.IntentCompiler;
 import org.onosproject.net.intent.Intent;
@@ -49,9 +46,9 @@ import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.constraint.AsymmetricPathConstraint;
 import org.onosproject.net.intent.IntentExtensionService;
 import org.onosproject.net.provider.ProviderId;
+import org.onosproject.net.resource.ResourceService;
 import org.onosproject.net.topology.DefaultTopologyVertex;
 import org.onosproject.net.topology.LinkWeigher;
-import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
 import org.onosproject.net.topology.TopologyGraph;
 import org.onosproject.net.topology.TopologyService;
@@ -59,8 +56,6 @@ import org.onosproject.net.topology.TopologyVertex;
 import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -85,7 +80,6 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
             new KShortestPathsSearch<>();
     private static final int DEFAULT_MAX_PATHS = 10;
-    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.2;
 
     private final ProviderId providerId = new ProviderId("FNL", "Ding");
 
@@ -98,22 +92,18 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected HostService hostService;
-
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected PathService pathService;
-
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected IntentExtensionService intentManager;
-
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected TopologyService topologyService;
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    protected ResourceService resourceService;
 
     protected int maxpaths = DEFAULT_MAX_PATHS;
     protected double totalPs = 1.0;
     protected static double costsrc = 0.0;
     protected static double costdst = 0.0;
     protected double totalLoss;
-    protected double packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
 
 
     @Activate
@@ -134,9 +124,9 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
         }
 
         boolean isAsymmetric = intent.constraints().contains(new AsymmetricPathConstraint());
-        Path pathOne = getPath(intent.one(), intent.two());
+        Path pathOne = getPath(intent, intent.one(), intent.two());
         Path pathTwo = isAsymmetric ?
-                getPath(intent.two(), intent.one()) : invertPath(pathOne);
+                getPath(intent, intent.two(), intent.one()) : invertPath(pathOne);
 
         Host one = hostService.getHost(intent.one());
         Host two = hostService.getHost(intent.two());
@@ -224,60 +214,32 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
 
     /**
      * Computes a path between two ConnectPoints.
-     *
+     * @param intent mm-wave intent
      * @param one start of the path
      * @param two end of the path
      * @return Path between the two
      */
-    protected Path getPath(HostId one, HostId two) {
+    protected Path getPath(MMWaveIntent intent, HostId one, HostId two) {
         Host srchost = hostService.getHost(one);
         Host dsthost = hostService.getHost(two);
         DeviceId srcLoc = srchost.location().deviceId();
         DeviceId dstLoc = dsthost.location().deviceId();
         TopologyGraph graph = topologyService.getGraph(topologyService.currentTopology());
-        DefaultTopologyVertex srcV = new DefaultTopologyVertex(srcLoc);
-        DefaultTopologyVertex dstV = new DefaultTopologyVertex(dstLoc);
+        DefaultTopologyVertex sV = new DefaultTopologyVertex(srcLoc);
+        DefaultTopologyVertex dV = new DefaultTopologyVertex(dstLoc);
         MMwaveLinkWeight w = new MMwaveLinkWeight();
-        Set<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> paths = KSP.search(graph, srcV, dstV, w, maxpaths).paths();
-        Set<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> result = new HashSet<>();
-        Iterator<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> it = paths.iterator();
-        //Here is not good to use foreach() because we can't break it.
-        while (it.hasNext()) {
-            org.onlab.graph.Path potentialpath = it.next();
-            List<Link> pathlinks = getLinks(potentialpath);
-            for (Link pathlink : pathlinks) {
-                String v = pathlink.annotations().value("length");
-                if (v != null) {
-                    double ps = getPs(Double.parseDouble(v));
-                    totalPs = totalPs * ps;
-                }
-            }
-            totalLoss = 1 - totalPs;
-            // If the path's loss is higher than the constraint, continue.
-            // Otherwise put it to the result and go out of the loop.
-            if (totalLoss > packetlossconstraint) {
-                totalPs = 1;
-            } else {
-                result.add(potentialpath);
-                break;
-            }
+        Set<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> paths = KSP.search(graph, sV, dV, w, maxpaths).paths();
+        final List<Constraint> constraints = intent.constraints();
+        ImmutableList<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> filtered = FluentIterable.from(paths)
+                .filter(path -> checkPath(networkPath(path), constraints))
+                .toList();
+        if (filtered.isEmpty()) {
+            return null;
         }
         // TODO: let's be more intelligent about this eventually
-        return networkPath(result.iterator().next());
+        return networkPath(filtered.iterator().next());
     }
 
-    /**
-     * Generate EdgeLink which is between Host and Device.
-     *
-     *
-     * @param host the host to use
-     * @param isIngress whether it is Ingress to Device or not.
-     * @return the connected Edgelink
-     */
-    private EdgeLink getEdgeLink(Host host, boolean isIngress) {
-        return new DefaultEdgeLink(providerId, new ConnectPoint(host.id(), PortNumber.portNumber(0)),
-                host.location(), isIngress);
-    }
     private  Weight getWeight(Link link) {
         String v = link.annotations().value("length");
         try {
@@ -327,7 +289,27 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
             return ScalarWeight.NON_VIABLE_WEIGHT;
         }
     }
-    private  double getPs(double d) {
+
+    /**
+     * Validates the specified path against the given constraints.
+     *
+     * @param path        path to be checked
+     * @param constraints path constraints
+     * @return true if the path passes all constraints
+     */
+    protected boolean checkPath(Path path, List<Constraint> constraints) {
+        if (path == null) {
+            return false;
+        }
+        for (Constraint constraint : constraints) {
+            if (!constraint.validate(path, resourceService::isAvailable)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static double getPs(double d) {
         double pl = 0.0;
         double alpha = 0.0;  //dB
         double beta = 0.0;
@@ -418,15 +400,15 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
         return ps;
     }
 
-    private  double qfun(double x) {
+    private  static double qfun(double x) {
         return 0.5 * Erf.erfc(x / Math.sqrt(2));
     }
 
-    private  double pcC1(double sigma, double m, double beta, double factor) {
+    private  static double pcC1(double sigma, double m, double beta, double factor) {
         return Math.pow(factor, 2 / beta) * Math.exp(2 * ((sigma * sigma) / (beta * beta)) + 2 * (m / beta));
     }
 
-    private   double pcC2(double sigma, double m, double d, double beta, double factor) {
+    private   static double pcC2(double sigma, double m, double d, double beta, double factor) {
         return qfun((sigma * sigma * (2 / beta) - Math.log(Math.pow(d, beta / factor)) + m) / sigma);
 
     }

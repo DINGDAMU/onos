@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.onosproject.mmcli;
+package org.onosproject.psuccess;
 
 import org.apache.commons.math3.special.Erf;
 
 public final class Psuccess {
     private Psuccess(){}
-    public  static double getPs(double d) {
+
+
+    public static double getPs(double d) {
         double pl = 0.0;
         double alpha = 0.0;  //dB
         double beta = 0.0;

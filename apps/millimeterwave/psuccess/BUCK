@@ -1,0 +1,7 @@
+COMPILE_DEPS = [
+    '//lib:commons-math3',
+]
+
+osgi_jar_with_tests (
+    deps = COMPILE_DEPS,
+)

@@ -2,11 +2,12 @@ COMPILE_DEPS = [
     '//lib:CORE_DEPS',
     '//lib:TEST',
     '//lib:org.apache.karaf.shell.console',
-    '//lib:commons-math3',
     '//incubator/api:onos-incubator-api',
     '//cli:onos-cli',
     '//utils/osgi:onlab-osgi',
     '//core/common:onos-core-common',
+    '//apps/millimeterwave/psuccess:onos-apps-millimeterwave-psuccess',
+
 ]
 
 

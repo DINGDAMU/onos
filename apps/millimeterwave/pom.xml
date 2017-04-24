@@ -41,6 +41,7 @@
 
 
     <modules>
+        <module>psuccess</module>
         <module>millimeterwavelink</module>
         <module>millimeterwaveport</module>
         <module>mmcli</module>

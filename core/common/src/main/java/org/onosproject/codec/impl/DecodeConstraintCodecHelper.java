@@ -29,6 +29,7 @@ import org.onosproject.net.intent.constraint.BandwidthConstraint;
 import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.ObstacleConstraint;
+import org.onosproject.net.intent.constraint.PacketLossConstraint;
 import org.onosproject.net.intent.constraint.WaypointConstraint;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -103,6 +104,19 @@ public final class DecodeConstraintCodecHelper {
                 .asLong();
 
         return new LatencyConstraint(Duration.ofMillis(latencyMillis));
+    }
+
+    /**
+     * Decodes a latency constraint.
+     *
+     * @return latency constraint object.
+     */
+    private Constraint decodePacketLossConstraint() {
+        double packetLossConstraint = nullIsIllegal(json.get(ConstraintCodec.PACKET_LOSS_CONSTRAINT),
+                ConstraintCodec.PACKET_LOSS_CONSTRAINT + ConstraintCodec.MISSING_MEMBER_MESSAGE)
+                .asDouble();
+
+        return new PacketLossConstraint(packetLossConstraint);
     }
 
     /**
@@ -195,6 +209,8 @@ public final class DecodeConstraintCodecHelper {
             return decodeWaypointConstraint();
         } else if (type.equals(AsymmetricPathConstraint.class.getSimpleName())) {
             return decodeAsymmetricPathConstraint();
+        } else if (type.equals(PacketLossConstraint.class.getSimpleName())) {
+            return decodePacketLossConstraint();
         }
         throw new IllegalArgumentException("Instruction type "
                 + type + " is not supported");

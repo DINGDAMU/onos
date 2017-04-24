@@ -3,6 +3,8 @@ COMPILE_DEPS = [
     '//utils/misc:onlab-misc',
     '//utils/osgi:onlab-osgi',
     '//utils/rest:onlab-rest',
+    '//lib:commons-math3',
+
 ]
 
 osgi_jar_with_tests (

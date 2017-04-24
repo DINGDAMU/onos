@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-present Open Networking Laboratory
+ * Copyright 2014-present Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,65 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.onosproject.millimeterwavegui;
+package org.onosproject.net.intent.constraint;
 
+import org.onosproject.net.Link;
+import org.onosproject.net.Path;
+import org.onosproject.net.intent.Constraint;
+import org.onosproject.net.intent.ResourceContext;
 import org.apache.commons.math3.special.Erf;
 
-public final class Psuccess {
-    private Psuccess(){}
-    public  static double getPs(double d) {
+
+import static org.onosproject.net.AnnotationKeys.getAnnotatedValue;
+
+/**
+ * Created by dingdamu on 2017/4/24.
+ */
+public class PacketLossConstraint implements Constraint {
+
+    public static final String LENGTH = "length";
+    private final double packetLossConstraint;
+
+    public double getPacketLossConstraint() {
+        return packetLossConstraint;
+    }
+
+
+    public PacketLossConstraint(double packetLossConstraint) {
+        this.packetLossConstraint = packetLossConstraint;
+    }
+
+    @Override
+    public double cost(Link link, ResourceContext context) {
+        // explicitly call a method not depending on LinkResourceService
+        return cost(link);
+    }
+
+    private double cost(Link link) {
+        if (link.annotations().value(LENGTH) != null) {
+            double length = getAnnotatedValue(link, LENGTH);
+            return getPs(length);
+        } else {
+            return 1.0;
+        }
+    }
+
+
+    @Override
+    public boolean validate(Path path, ResourceContext context) {
+        return validate(path);
+    }
+
+    private boolean validate(Path path) {
+        double totalPs = 1.0;
+        for (Link link : path.links()) {
+            totalPs = totalPs * cost(link);
+        }
+        double totalLoss = 1 - totalPs;
+        return totalLoss < packetLossConstraint;
+    }
+
+    public static double getPs(double d) {
         double pl = 0.0;
         double alpha = 0.0;  //dB
         double beta = 0.0;
@@ -122,9 +174,4 @@ public final class Psuccess {
         return qfun((sigma * sigma * (2 / beta) - Math.log(Math.pow(d, beta / factor)) + m) / sigma);
 
     }
-
-
-
-
-
 }

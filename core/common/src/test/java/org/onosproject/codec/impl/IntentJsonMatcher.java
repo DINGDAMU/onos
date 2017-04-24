@@ -32,12 +32,14 @@ import org.onosproject.net.intent.ConnectivityIntent;
 import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.HostToHostIntent;
 import org.onosproject.net.intent.Intent;
+import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.PointToPointIntent;
 import org.onosproject.net.intent.constraint.AnnotationConstraint;
 import org.onosproject.net.intent.constraint.BandwidthConstraint;
 import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.ObstacleConstraint;
+import org.onosproject.net.intent.constraint.PacketLossConstraint;
 import org.onosproject.net.intent.constraint.WaypointConstraint;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -79,6 +81,34 @@ public final class IntentJsonMatcher extends TypeSafeDiagnosingMatcher<JsonNode>
 
         // check host 2
         final String host2 = hostToHostIntent.two().toString();
+        final String jsonHost2 = jsonIntent.get("two").asText();
+        if (!host2.equals(jsonHost2)) {
+            description.appendText("host two was " + jsonHost2);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Matches the JSON representation of mm-wave intent.
+     *
+     * @param jsonIntent JSON representation of the intent
+     * @param description Description object used for recording errors
+     * @return true if the JSON matches the intent, false otherwise
+     */
+    private boolean matchMMWaveIntent(JsonNode jsonIntent, Description description) {
+        final MMWaveIntent mmwaveIntent = (MMWaveIntent) intent;
+
+        // check host one
+        final String host1 = mmwaveIntent.one().toString();
+        final String jsonHost1 = jsonIntent.get("one").asText();
+        if (!host1.equals(jsonHost1)) {
+            description.appendText("host one was " + jsonHost1);
+            return false;
+        }
+
+        // check host 2
+        final String host2 = mmwaveIntent.two().toString();
         final String jsonHost2 = jsonIntent.get("two").asText();
         if (!host2.equals(jsonHost2)) {
             description.appendText("host two was " + jsonHost2);
@@ -208,6 +238,21 @@ public final class IntentJsonMatcher extends TypeSafeDiagnosingMatcher<JsonNode>
     }
 
     /**
+     * Matches a packet loss constraint against a JSON representation of the
+     * constraint.
+     *
+     * @param packetLossConstraint constraint object to match
+     * @param constraintJson JSON representation of the constraint
+     * @return true if the constraint and JSON match, false otherwise.
+     */
+    private boolean matchPacketLossConstraint(PacketLossConstraint packetLossConstraint,
+                                           JsonNode constraintJson) {
+        final JsonNode packetLossJson = constraintJson.get("packetlossconstraint");
+        return (packetLossJson != null
+                && packetLossJson.asDouble() == packetLossConstraint.getPacketLossConstraint());
+    }
+
+    /**
      * Matches an obstacle constraint against a JSON representation of the
      * constraint.
      *
@@ -304,6 +349,9 @@ public final class IntentJsonMatcher extends TypeSafeDiagnosingMatcher<JsonNode>
                     constraintJson);
         } else if (constraint instanceof WaypointConstraint) {
             return matchWaypointConstraint((WaypointConstraint) constraint,
+                    constraintJson);
+        } else if (constraint instanceof PacketLossConstraint) {
+            return matchPacketLossConstraint((PacketLossConstraint) constraint,
                     constraintJson);
         }
         return true;
@@ -406,6 +454,8 @@ public final class IntentJsonMatcher extends TypeSafeDiagnosingMatcher<JsonNode>
             return matchHostToHostIntent(jsonIntent, description);
         } else if (connectivityIntent instanceof PointToPointIntent) {
             return matchPointToPointIntent(jsonIntent, description);
+        } else if (connectivityIntent instanceof MMWaveIntent) {
+            return matchMMWaveIntent(jsonIntent, description);
         } else {
             description.appendText("class of connectivity intent is unknown");
             return false;

@@ -16,7 +16,6 @@
 package org.onosproject.millimeterwavegui;
 
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.Host;
 import org.onosproject.net.HostId;
 import org.onosproject.net.Link;
 import org.onosproject.net.host.HostService;
@@ -27,7 +26,7 @@ import org.onosproject.ui.topo.ButtonId;
 import org.onosproject.ui.topo.PropertyPanel;
 import org.onosproject.ui.topo.TopoConstants.CoreButtons;
 import org.onosproject.ui.GlyphConstants;
-
+import org.onosproject.psuccess.Psuccess;
 
 import java.util.HashMap;
 import java.util.HashSet;

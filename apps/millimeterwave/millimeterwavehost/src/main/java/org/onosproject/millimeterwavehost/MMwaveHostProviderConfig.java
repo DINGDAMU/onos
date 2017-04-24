@@ -61,13 +61,15 @@ public class MMwaveHostProviderConfig extends Config<ApplicationId> {
             this.packetlossconstraint = packetlossconstraint;
             this.hostid = hostid;
         }
+        public String getHostid() {
+            return hostid;
+        }
         public int getMaxpaths() {
             return maxpaths;
         }
         public double getPacketlossconstraint() {
             return packetlossconstraint;
         }
-        public String getHostid() { return hostid; }
     }
 
 }
