@@ -98,9 +98,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             multiValued = false)
     String plconstraint = null;
 
-    @Option(name = "-f", aliases = "--filter",
-            description = "filter with packet loss", required = false,
-            multiValued = false)
+
     boolean filter = false;
 
     protected PathService pathService;
@@ -121,6 +119,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         }
         if (!isNullOrEmpty(plconstraint)) {
             packetlossconstraint = Double.parseDouble(plconstraint);
+            filter = true;
         }
         pathService = get(PathService.class);
         hostService = get(HostService.class);

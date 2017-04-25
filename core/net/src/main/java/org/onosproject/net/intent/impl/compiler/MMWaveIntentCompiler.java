@@ -216,7 +216,7 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     protected Path getPath(MMWaveIntent intent, HostId one, HostId two) {
         Host srchost = hostService.getHost(one);
         Host dsthost = hostService.getHost(two);
-        if (!isNullOrEmpty(srchost.annotations().value("maxpaths"))){
+        if (!isNullOrEmpty(srchost.annotations().value("maxpaths"))) {
             maxpaths = Integer.valueOf(srchost.annotations().value("maxpaths"));
         }
 
