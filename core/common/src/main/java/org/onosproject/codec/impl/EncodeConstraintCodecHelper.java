@@ -24,6 +24,7 @@ import org.onosproject.net.intent.constraint.BandwidthConstraint;
 import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.ObstacleConstraint;
+import org.onosproject.net.intent.constraint.PacketLossConstraint;
 import org.onosproject.net.intent.constraint.WaypointConstraint;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -61,6 +62,20 @@ public final class EncodeConstraintCodecHelper {
                 (LatencyConstraint) constraint;
         return context.mapper().createObjectNode()
                 .put("latencyMillis", latencyConstraint.latency().toMillis());
+    }
+
+
+    /**
+     * Encodes a packet loss constraint.
+     *
+     * @return JSON ObjectNode representing the constraint
+     */
+    private ObjectNode encodePacketLossConstraint() {
+        checkNotNull(constraint, "Packet loss constraint cannot be null");
+        final PacketLossConstraint packetLossConstraint =
+                (PacketLossConstraint) constraint;
+        return context.mapper().createObjectNode()
+                .put("packetlossconstraint", packetLossConstraint.getPacketLossConstraint());
     }
 
     /**
@@ -174,6 +189,8 @@ public final class EncodeConstraintCodecHelper {
             result = encodeObstacleConstraint();
         } else if (constraint instanceof WaypointConstraint) {
             result = encodeWaypointConstraint();
+        } else if (constraint instanceof PacketLossConstraint) {
+            result = encodePacketLossConstraint();
         } else {
             result = context.mapper().createObjectNode();
         }

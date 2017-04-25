@@ -7,6 +7,10 @@ A millimeterwave application based on ONOS
 
 
 # Installation 
+The application has been added to **modules.defs**:  
+
+    '//apps/millimeterwave:onos-apps-millimeterwave-oar',
+    
 BUCK will help us to automatically install it in ONOS.
 
 # Activation
@@ -83,7 +87,7 @@ Add the intent between host1 and host2, the path will be the shortest path which
         "isEnabled":"true"
       }]
      },
-     "org.onosproject.millimeterwaveport" : {
+     "org.onosproject.millimeterwavehost" : {
        "hosts" : [{
          "hostid":"mmwave",
          "packetlossconstraint": 0.2,

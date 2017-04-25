@@ -15,6 +15,7 @@
  */
 package org.onosproject.net.intent.constraint;
 
+import com.google.common.base.MoreObjects;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
 import org.onosproject.net.intent.Constraint;
@@ -69,6 +70,14 @@ public class PacketLossConstraint implements Constraint {
         }
         double totalLoss = 1 - totalPs;
         return totalLoss < packetLossConstraint;
+    }
+
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("packetlossconstraint", packetLossConstraint)
+                .toString();
     }
 
     public static double getPs(double d) {

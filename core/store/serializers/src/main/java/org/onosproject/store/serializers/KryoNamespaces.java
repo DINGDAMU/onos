@@ -197,6 +197,7 @@ import org.onosproject.net.intent.constraint.HashedPathSelectionConstraint;
 import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.ObstacleConstraint;
+import org.onosproject.net.intent.constraint.PacketLossConstraint;
 import org.onosproject.net.intent.constraint.PartialFailureConstraint;
 import org.onosproject.net.intent.constraint.ProtectionConstraint;
 import org.onosproject.net.intent.constraint.WaypointConstraint;
@@ -480,6 +481,7 @@ public final class KryoNamespaces {
                     BandwidthConstraint.class,
                     LinkTypeConstraint.class,
                     LatencyConstraint.class,
+                    PacketLossConstraint.class,
                     WaypointConstraint.class,
                     ObstacleConstraint.class,
                     AnnotationConstraint.class,
