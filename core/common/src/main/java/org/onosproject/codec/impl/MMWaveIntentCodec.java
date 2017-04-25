@@ -34,7 +34,7 @@ public class MMWaveIntentCodec extends JsonCodec<MMWaveIntent> {
 
     @Override
     public ObjectNode encode(MMWaveIntent intent, CodecContext context) {
-        checkNotNull(intent, "Host to host intent cannot be null");
+        checkNotNull(intent, "MM-wave intent cannot be null");
 
         final JsonCodec<ConnectivityIntent> connectivityIntentCodec =
                 context.codec(ConnectivityIntent.class);

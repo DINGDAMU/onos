@@ -20,6 +20,7 @@ import org.onosproject.codec.JsonCodec;
 import org.onosproject.core.CoreService;
 import org.onosproject.net.NetworkResource;
 import org.onosproject.net.ResourceGroup;
+import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.PointToPointIntent;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.IntentService;
@@ -93,6 +94,8 @@ public final class IntentCodec extends JsonCodec<Intent> {
             return context.codec(HostToHostIntent.class).decode(json, context);
         } else if (type.equals(SinglePointToMultiPointIntent.class.getSimpleName())) {
             return context.codec(SinglePointToMultiPointIntent.class).decode(json, context);
+        } else if (type.equals(MMWaveIntent.class.getSimpleName())) {
+            return context.codec(MMWaveIntent.class).decode(json, context);
         }
 
         throw new IllegalArgumentException("Intent type "
