@@ -45,7 +45,6 @@ import org.onosproject.net.intent.IntentCompilationException;
 import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.constraint.AsymmetricPathConstraint;
 import org.onosproject.net.intent.IntentExtensionService;
-import org.onosproject.net.provider.ProviderId;
 import org.onosproject.net.resource.ResourceService;
 import org.onosproject.net.topology.DefaultTopologyVertex;
 import org.onosproject.net.topology.LinkWeigher;
@@ -65,10 +64,10 @@ import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 import static org.onosproject.net.Link.Type.EDGE;
 import static org.onosproject.net.flow.DefaultTrafficSelector.builder;
 import static org.slf4j.LoggerFactory.getLogger;
+import static com.google.common.base.Strings.isNullOrEmpty;
 
-/**
- * Created by dingdamu on 2017/3/20.
- */
+
+
 @Component(immediate = true)
 public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
 
@@ -81,7 +80,6 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
             new KShortestPathsSearch<>();
     private static final int DEFAULT_MAX_PATHS = 10;
 
-    private final ProviderId providerId = new ProviderId("FNL", "Ding");
 
 
     /**
@@ -100,10 +98,6 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     protected ResourceService resourceService;
 
     protected int maxpaths = DEFAULT_MAX_PATHS;
-    protected double totalPs = 1.0;
-    protected static double costsrc = 0.0;
-    protected static double costdst = 0.0;
-    protected double totalLoss;
 
 
     @Activate
@@ -222,6 +216,10 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     protected Path getPath(MMWaveIntent intent, HostId one, HostId two) {
         Host srchost = hostService.getHost(one);
         Host dsthost = hostService.getHost(two);
+        if (!isNullOrEmpty(srchost.annotations().value("maxpaths"))){
+            maxpaths = Integer.valueOf(srchost.annotations().value("maxpaths"));
+        }
+
         DeviceId srcLoc = srchost.location().deviceId();
         DeviceId dstLoc = dsthost.location().deviceId();
         TopologyGraph graph = topologyService.getGraph(topologyService.currentTopology());

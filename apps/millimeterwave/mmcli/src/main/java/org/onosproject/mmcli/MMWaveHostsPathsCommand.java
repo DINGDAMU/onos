@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.onosproject.cli.net.LinksListCommand.compactLinkString;
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 
 
@@ -64,7 +65,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
     private static final double ETHERNET_DEFAULT_COST = 101.0;
     private static final double INITIAL_COST = 0.0;
-    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.2;
+    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 1.0;
     private static final int DEFAULT_MAX_PATHS = 10;
 
 
@@ -87,6 +88,16 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             required = true, multiValued = false)
     String dstArg = null;
 
+    @Option(name = "-mp", aliases = "--maxpath",
+            description = "max path in ksp algorithm", required = false,
+            multiValued = false)
+    String k = null;
+
+    @Option(name = "-pl", aliases = "--packetlossconstraint",
+            description = "packet loss constraint", required = false,
+            multiValued = false)
+    String plconstraint = null;
+
     @Option(name = "-f", aliases = "--filter",
             description = "filter with packet loss", required = false,
             multiValued = false)
@@ -105,6 +116,12 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
 
 
     protected void init() {
+        if (!isNullOrEmpty(k)) {
+            maxpaths = Integer.valueOf(k);
+        }
+        if (!isNullOrEmpty(plconstraint)) {
+            packetlossconstraint = Double.parseDouble(plconstraint);
+        }
         pathService = get(PathService.class);
         hostService = get(HostService.class);
         topologyService = get(TopologyService.class);

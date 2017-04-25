@@ -123,7 +123,9 @@ public class MMWavePathsDevicesCommand extends AbstractShellCommand {
         sb.append("; cost=").append(((ScalarWeight) cost).value());
         return sb.toString();
     }
-
+    /*
+     * MM-wave link weight.
+     */
     class MMwaveLinkWeight implements LinkWeigher {
 
         @Override

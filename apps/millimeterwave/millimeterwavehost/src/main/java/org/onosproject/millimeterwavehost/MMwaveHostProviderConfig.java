@@ -27,7 +27,6 @@ import java.util.Set;
 public class MMwaveHostProviderConfig extends Config<ApplicationId> {
     public static final String CONFIG_VALUE_ERROR = "Error parsing config value";
     public static final String MAX_PATHS = "maxpaths";
-    public static final String PACKET_LOSS_CONSTRAINT = "packetlossconstraint";
     public static final String HOST_ID = "hostid";
 
 
@@ -41,8 +40,7 @@ public class MMwaveHostProviderConfig extends Config<ApplicationId> {
             for (JsonNode node : array) {
                 String hostid = node.path(HOST_ID).asText();
                 int maxpaths = node.path(MAX_PATHS).asInt();
-                double packetconstraint = node.path(PACKET_LOSS_CONSTRAINT).asDouble();
-                hostAttributes.add(new HostAttributes(maxpaths, packetconstraint, hostid));
+                hostAttributes.add(new HostAttributes(maxpaths, hostid));
 
             }
         } catch (IllegalArgumentException e) {
@@ -54,11 +52,9 @@ public class MMwaveHostProviderConfig extends Config<ApplicationId> {
     public class HostAttributes {
         private final String hostid;
         private final int maxpaths;
-        private final double packetlossconstraint;
 
-        public HostAttributes(int maxpaths, double packetlossconstraint, String hostid) {
+        public HostAttributes(int maxpaths, String hostid) {
             this.maxpaths = maxpaths;
-            this.packetlossconstraint = packetlossconstraint;
             this.hostid = hostid;
         }
         public String getHostid() {
@@ -66,9 +62,6 @@ public class MMwaveHostProviderConfig extends Config<ApplicationId> {
         }
         public int getMaxpaths() {
             return maxpaths;
-        }
-        public double getPacketlossconstraint() {
-            return packetlossconstraint;
         }
     }
 

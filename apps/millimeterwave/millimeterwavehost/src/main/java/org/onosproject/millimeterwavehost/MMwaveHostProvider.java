@@ -163,15 +163,12 @@ public class MMwaveHostProvider extends AbstractProvider
                     String hostArg = hostAttributes.getHostid();
                     Preconditions.checkNotNull(hostArg, "The host id is null!");
                     int maxpaths = hostAttributes.getMaxpaths();
-                    Preconditions.checkNotNull(maxpaths, "The maxpath is null!");
-                    double packetlossConstraint = hostAttributes.getPacketlossconstraint();
-                    Preconditions.checkNotNull(packetlossConstraint, "The  packet loss constraint is null!");
+                    Preconditions.checkNotNull(maxpaths, "The maxpaths is null!");
 
 
                     //configuration object
                     SparseAnnotations an = DefaultAnnotations.builder()
                             .set(MMwaveHostProviderConfig.MAX_PATHS, String.valueOf(maxpaths))
-                            .set(MMwaveHostProviderConfig.PACKET_LOSS_CONSTRAINT, String.valueOf(packetlossConstraint))
                             .build();
 
                     HostId hostId = HostId.hostId(hostArg);

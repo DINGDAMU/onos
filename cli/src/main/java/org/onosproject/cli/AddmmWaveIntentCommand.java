@@ -17,6 +17,7 @@ package org.onosproject.cli;
 
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
+import org.apache.karaf.shell.commands.Option;
 import org.onosproject.cli.net.ConnectivityIntentCommand;
 import  org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.HostId;
@@ -24,13 +25,13 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.IntentService;
+import org.onosproject.net.intent.constraint.PacketLossConstraint;
 
 import java.util.List;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 
-/**
- * Created by dingdamu on 2017/3/17.
- */
+
 @Command(scope = "onos", name = "mmwave-add-intent",
         description = "Installs mm-wave intents")
 public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
@@ -42,6 +43,11 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
             "]", description = "Another host ID",
             required = true, multiValued = false)
     String dstArg = null;
+
+    @Option(name = "-pl", aliases = "--packetlossconstraint",
+            description = "packet loss constraint", required = false,
+            multiValued = false)
+    String plconstraint = null;
 
 
 
@@ -56,6 +62,9 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
         TrafficSelector selector = buildTrafficSelector();
         TrafficTreatment treatment = buildTrafficTreatment();
         List<Constraint> constraints = buildConstraints();
+        if (!isNullOrEmpty(plconstraint)) {
+            constraints.add(new PacketLossConstraint(Double.parseDouble(plconstraint)));
+        }
 
         MMWaveIntent intent = MMWaveIntent.builder()
                 .appId(appId())
