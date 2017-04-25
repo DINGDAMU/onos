@@ -25,9 +25,6 @@ import org.apache.commons.math3.special.Erf;
 
 import static org.onosproject.net.AnnotationKeys.getAnnotatedValue;
 
-/**
- * Created by dingdamu on 2017/4/24.
- */
 public class PacketLossConstraint implements Constraint {
 
     public static final String LENGTH = "length";
