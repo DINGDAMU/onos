@@ -52,20 +52,24 @@ In mm-wave case, total cost = 1 + 1/(ps/100);
 
 ### Conditions before choosing the shortest path  
 All the switches are considered as independent, so the total packet loss = 1 - Ps1 * Ps2 * .... (All the switches in the path).  
-The total packet loss should be less than the constraint which is given via RESTful API.
+The total packet loss should be less than the constraint which is given via CLI.
 
     onos>mmwave-hosts-path  <source hostID> <source hostID>  
 Options: 
  
-    -pl/--packetlossconstraint  
+    -pl/--packetlossconstraint  <number from 0.01 to 1.00>
 Set the packet loss constraint and filter the K shortest paths with it. 
  
-    -mp/--maxpath 
+    -mp/--maxpath <an integer>
 Set the maxpaths in K shortest paths.
 ## Add mm-wave intents  
     onos>mmwave-add-intents <hostId 1> <hostId 2>  
 Add the intent between host1 and host2, the path will be the shortest path which calculated by own cost instead of the default cost by **add-host-intent** command.  
 
+Options:
+
+    -pl/--packetlossconstraint <number from 0.01 to 1.00>
+Choose the shortest path which satisfies the packet loss constraint
 
 
 

@@ -49,6 +49,7 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.host.HostEvent;
 import org.onosproject.net.host.HostListener;
+import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.HostToHostIntent;
@@ -58,6 +59,7 @@ import org.onosproject.net.intent.IntentListener;
 import org.onosproject.net.intent.IntentEvent;
 import org.onosproject.net.intent.Key;
 import org.onosproject.net.intent.IntentState;
+import org.onosproject.net.intent.constraint.PacketLossConstraint;
 import org.onosproject.net.link.LinkEvent;
 import org.onosproject.net.link.LinkListener;
 import org.onosproject.ui.JsonUtils;
@@ -72,6 +74,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -441,6 +444,9 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
 
         @Override
         public void process(ObjectNode payload) {
+            final List<Constraint> constraints = new LinkedList<>();
+            //Need to consider how to get the dynamic packet loss constraint
+         //   constraints.add(new PacketLossConstraint(0.2));
             // TODO: add protection against device ids and non-existent hosts.
             HostId one = hostId(string(payload, ONE));
             HostId two = hostId(string(payload, TWO));
@@ -449,6 +455,7 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
                     .appId(appId)
                     .one(one)
                     .two(two)
+         //           .constraints(constraints)
                     .build();
 
             intentService.submit(intent);

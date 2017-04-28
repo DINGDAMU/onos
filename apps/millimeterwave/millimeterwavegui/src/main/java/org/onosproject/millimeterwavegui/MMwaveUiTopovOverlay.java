@@ -53,10 +53,6 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
     private static final String MY_TITLE = "Millimeter wave app";
     private static final String MMWAVE_LINKS = "MM-wave links";
     private static final String ETHERNET_LINKS = "Ethernet links";
-    private static final String MAX_PATHS = "MAX paths";
-    private static final String PACKET_LOSS_CONSTRAINT = "Packet loss constraint";
-    private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 0.1;
-    private static final int DEFAULT_MAX_PATHS = 5;
 
 
 

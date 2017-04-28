@@ -23,7 +23,7 @@
     'use strict';
 
     // injected refs
-    var $log, fs, flash, wss, api, linkData, des, linkPanel,panel,ls,gs;
+    var $log, fs, flash, wss, api;
 
     // constants
     var displayStart = 'mmwaveTopovDisplayStart',
