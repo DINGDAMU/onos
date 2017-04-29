@@ -15,7 +15,6 @@
  */
 package org.onosproject.net.intent.impl.compiler;
 
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.math3.special.Erf;
@@ -27,6 +26,7 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.onlab.graph.KShortestPathsSearch;
 import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
+import org.onosproject.common.DefaultTopology;
 import org.onosproject.net.DefaultPath;
 import org.onosproject.net.HostId;
 import org.onosproject.net.Path;
@@ -45,12 +45,11 @@ import org.onosproject.net.intent.IntentCompilationException;
 import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.constraint.AsymmetricPathConstraint;
 import org.onosproject.net.intent.IntentExtensionService;
+import org.onosproject.net.intent.impl.PathNotFoundException;
 import org.onosproject.net.resource.ResourceService;
-import org.onosproject.net.topology.DefaultTopologyVertex;
 import org.onosproject.net.topology.LinkWeigher;
+import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
-import org.onosproject.net.topology.TopologyGraph;
-import org.onosproject.net.topology.TopologyService;
 import org.onosproject.net.topology.TopologyVertex;
 import org.slf4j.Logger;
 import java.util.ArrayList;
@@ -64,7 +63,6 @@ import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 import static org.onosproject.net.Link.Type.EDGE;
 import static org.onosproject.net.flow.DefaultTrafficSelector.builder;
 import static org.slf4j.LoggerFactory.getLogger;
-import static com.google.common.base.Strings.isNullOrEmpty;
 
 
 
@@ -93,7 +91,7 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected IntentExtensionService intentManager;
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected TopologyService topologyService;
+    protected PathService pathService;
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected ResourceService resourceService;
 
@@ -118,9 +116,9 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
         }
 
         boolean isAsymmetric = intent.constraints().contains(new AsymmetricPathConstraint());
-        Path pathOne = getPath(intent, intent.one(), intent.two());
+        Path pathOne = getPathOrException(intent, intent.one(), intent.two());
         Path pathTwo = isAsymmetric ?
-                getPath(intent, intent.two(), intent.one()) : invertPath(pathOne);
+                getPathOrException(intent, intent.two(), intent.one()) : invertPath(pathOne);
 
         Host one = hostService.getHost(intent.one());
         Host two = hostService.getHost(intent.two());
@@ -214,28 +212,21 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
      * @return Path between the two
      */
     protected Path getPath(MMWaveIntent intent, HostId one, HostId two) {
-        Host srchost = hostService.getHost(one);
-        Host dsthost = hostService.getHost(two);
-        if (!isNullOrEmpty(srchost.annotations().value("maxpaths"))) {
-            maxpaths = Integer.valueOf(srchost.annotations().value("maxpaths"));
-        }
+        DefaultTopology.setDefaultGraphPathSearch(KSP);
+        DefaultTopology.setDefaultMaxPaths(DEFAULT_MAX_PATHS);
+        Set<Path> paths = pathService.getPaths(one, two, new MMwaveLinkWeight());
+        return paths.iterator().next();
 
-        DeviceId srcLoc = srchost.location().deviceId();
-        DeviceId dstLoc = dsthost.location().deviceId();
-        TopologyGraph graph = topologyService.getGraph(topologyService.currentTopology());
-        DefaultTopologyVertex sV = new DefaultTopologyVertex(srcLoc);
-        DefaultTopologyVertex dV = new DefaultTopologyVertex(dstLoc);
-        MMwaveLinkWeight w = new MMwaveLinkWeight();
-        Set<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> paths = KSP.search(graph, sV, dV, w, maxpaths).paths();
-        final List<Constraint> constraints = intent.constraints();
-        ImmutableList<org.onlab.graph.Path<TopologyVertex, TopologyEdge>> filtered = FluentIterable.from(paths)
-                .filter(path -> checkPath(networkPath(path), constraints))
-                .toList();
-        if (filtered.isEmpty()) {
-            return null;
+    }
+
+    protected Path getPathOrException(MMWaveIntent intent,
+                                      HostId one, HostId two) {
+        Path path = getPath(intent, one, two);
+        if (path == null) {
+            throw new PathNotFoundException(one, two);
         }
         // TODO: let's be more intelligent about this eventually
-        return networkPath(filtered.iterator().next());
+        return path;
     }
 
     private  Weight getWeight(Link link) {

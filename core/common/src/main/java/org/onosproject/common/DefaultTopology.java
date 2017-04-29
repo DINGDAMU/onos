@@ -89,6 +89,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
 
     private static LinkWeigher defaultLinkWeigher = null;
     private static GraphPathSearch<TopologyVertex, TopologyEdge> defaultGraphPathSearch = null;
+    private static int maxpathss = ALL_PATHS;
 
     private final long time;
     private final long creationTime;
@@ -128,6 +129,17 @@ public class DefaultTopology extends AbstractModel implements Topology {
         defaultGraphPathSearch = graphPathSearch;
     }
 
+    /**
+     * Sets the max paths to be used when computing paths.
+     * If null is specified, the builtin ALL_PATHS will be used.
+     *
+     * @param maxPath  To define the max path.
+     */
+    public static void setDefaultMaxPaths(
+            int maxPath) {
+        log.info("Setting new default max paths to {}", maxPath);
+        maxpathss = maxPath;
+    }
 
     /**
      * Creates a topology descriptor attributed to the specified provider.
@@ -334,7 +346,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
      * @return set of shortest paths
      */
     public Set<Path> getPaths(DeviceId src, DeviceId dst) {
-        return getPaths(src, dst, linkWeight(), ALL_PATHS);
+        return getPaths(src, dst, linkWeight(), maxpathss);
     }
 
     /**
@@ -347,7 +359,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
      * @return set of shortest paths
      */
     public Set<Path> getPaths(DeviceId src, DeviceId dst, LinkWeigher weigher) {
-        return getPaths(src, dst, weigher, ALL_PATHS);
+        return getPaths(src, dst, weigher, maxpathss);
     }
 
     /**
@@ -419,7 +431,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
         }
 
         GraphPathSearch.Result<TopologyVertex, TopologyEdge> result =
-                SUURBALLE.search(graph, srcV, dstV, weigher, ALL_PATHS);
+                SUURBALLE.search(graph, srcV, dstV, weigher, maxpathss);
         ImmutableSet.Builder<DisjointPath> builder = ImmutableSet.builder();
         for (org.onlab.graph.Path<TopologyVertex, TopologyEdge> path : result.paths()) {
             DisjointPath disjointPath =
@@ -456,7 +468,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
         SrlgGraphSearch<TopologyVertex, TopologyEdge> srlg =
                 new SrlgGraphSearch<>(riskProfile);
         GraphPathSearch.Result<TopologyVertex, TopologyEdge> result =
-                srlg.search(graph, srcV, dstV, weigher, ALL_PATHS);
+                srlg.search(graph, srcV, dstV, weigher, maxpathss);
         ImmutableSet.Builder<DisjointPath> builder = ImmutableSet.builder();
         for (org.onlab.graph.Path<TopologyVertex, TopologyEdge> path : result.paths()) {
             DisjointPath disjointPath =

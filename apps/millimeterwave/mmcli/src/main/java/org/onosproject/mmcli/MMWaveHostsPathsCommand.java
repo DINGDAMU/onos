@@ -21,16 +21,17 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.apache.karaf.shell.commands.Option;
-import org.onlab.graph.Path;
 import org.onlab.graph.KShortestPathsSearch;
 import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
 import org.onosproject.cli.AbstractShellCommand;
 import org.onosproject.cli.net.LinksListCommand;
+import org.onosproject.common.DefaultTopology;
 import org.onosproject.net.Host;
 import org.onosproject.net.DefaultEdgeLink;
 import org.onosproject.net.EdgeLink;
 import org.onosproject.net.ConnectPoint;
+import org.onosproject.net.Path;
 import org.onosproject.net.PortNumber;
 import org.onosproject.net.host.HostService;
 import org.onosproject.net.provider.ProviderId;
@@ -40,10 +41,8 @@ import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
-import org.onosproject.net.topology.TopologyGraph;
 import org.onosproject.net.topology.TopologyService;
 import org.onosproject.net.topology.TopologyVertex;
-import org.onosproject.net.topology.DefaultTopologyVertex;
 import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.psuccess.Psuccess;
 
@@ -104,13 +103,10 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     protected PathService pathService;
     protected HostService hostService;
     protected TopologyService topologyService;
-    protected TopologyGraph graph;
     protected double totalPs = 1.0;
     protected double totalLoss;
     protected int maxpaths = DEFAULT_MAX_PATHS;
     protected double packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
-    protected static double costsrc = 0.0;
-    protected static double costdst = 0.0;
 
 
     protected void init() {
@@ -134,25 +130,22 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         Host dsthost = hostService.getHost(dst);
         DeviceId srcLoc = srchost.location().deviceId();
         DeviceId dstLoc = dsthost.location().deviceId();
-        graph = topologyService.getGraph(topologyService.currentTopology());
-        DefaultTopologyVertex srcV = new DefaultTopologyVertex(srcLoc);
-        DefaultTopologyVertex dstV = new DefaultTopologyVertex(dstLoc);
+        DefaultTopology.setDefaultMaxPaths(maxpaths);
+        DefaultTopology.setDefaultGraphPathSearch(KSP);
         MMwaveLinkWeight w = new MMwaveLinkWeight();
-        Set<Path<TopologyVertex, TopologyEdge>> paths = KSP.search(graph, srcV, dstV, w, maxpaths).paths();
+        Set<Path> paths = pathService.getPaths(src, dst, w);
         if (paths.isEmpty()) {
             print("The path is empty!");
             return;
         }
         Link srclink = getEdgeLink(srchost, true);
-        costsrc = ((ScalarWeight) getWeight(srclink)).value();
         Link dstlink = getEdgeLink(dsthost, false);
-        costdst = ((ScalarWeight) getWeight(dstlink)).value();
-        Set<Path<TopologyVertex, TopologyEdge>> result = new HashSet<>();
-        Iterator<Path<TopologyVertex, TopologyEdge>> it = paths.iterator();
+        Set<Path> result = new HashSet<>();
+        Iterator<Path> it = paths.iterator();
         //Here is not good to use foreach() because we can't break it.
         while (it.hasNext()) {
             Path potentialpath = it.next();
-            List<Link> pathlinks = getLinks(potentialpath);
+            List<Link> pathlinks = potentialpath.links();
             for (Link pathlink : pathlinks) {
                 String v = pathlink.annotations().value("length");
                 if (v != null) {
@@ -198,14 +191,14 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
      * @param paths collection of paths
      * @return JSON array
      */
-    private static JsonNode json(AbstractShellCommand context, Iterable<Path<TopologyVertex, TopologyEdge>> paths) {
+    private static JsonNode json(AbstractShellCommand context, Iterable<Path> paths) {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode result = mapper.createArrayNode();
         for (Path path : paths) {
-            Weight cost = path.cost();
-            result.add(LinksListCommand.json(context, networkPath(path))
-                               .put("cost", ((ScalarWeight) cost).value() + costsrc + costdst)
-                               .set("links", LinksListCommand.json(context, getLinks(path))));
+            Weight cost = path.weight();
+            result.add(LinksListCommand.json(context, path)
+                               .put("cost", ((ScalarWeight) cost).value())
+                               .set("links", LinksListCommand.json(context, path.links())));
         }
         return result;
     }
@@ -220,14 +213,15 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
      */
     private  String pathString(Path path, Link srclink, Link dstlink) {
         StringBuilder sb = new StringBuilder();
-        sb.append(compactaSrcEdgeLinkString(srclink)).append(SEP);
-        List<Link> links = getLinks(path);
-        for (Link link : links) {
-            sb.append(compactLinkString(link)).append(SEP);
+        List<Link> links = path.links();
+
+        sb.append(compactaSrcEdgeLinkString(links.get(0))).append(SEP);
+        for (int i = 1; i < links.size() - 1; i++) {
+            sb.append(compactLinkString(links.get(i))).append(SEP);
         }
-        sb.append(compactaDstEdgeLinkString(dstlink));
-        Weight cost = path.cost();
-        sb.append("; cost=").append(((ScalarWeight) cost).value() + costsrc + costdst);
+        sb.append(compactaDstEdgeLinkString(links.get(links.size() - 1)));
+        Weight cost = path.weight();
+        sb.append("; cost=").append(((ScalarWeight) cost).value());
         return sb.toString();
     }
     /**
