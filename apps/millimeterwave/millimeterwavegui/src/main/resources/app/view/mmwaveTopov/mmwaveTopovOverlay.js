@@ -148,6 +148,8 @@
                 add('Length');
                 add('Capacity');
                 add('Packet_loss');
+                add('Bandwidth');
+                add('Latency');
 
                 return data;
             }

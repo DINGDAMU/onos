@@ -46,6 +46,7 @@ import org.onosproject.net.topology.TopologyVertex;
 import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.psuccess.Psuccess;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -57,15 +58,18 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 
 
-
 @Command(scope = "onos", name = "mmwave-hosts-paths",
         description = "calculate shortest path between hosts with own customized link weight")
 public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     private static final String SEP = "==>";
     private static final double ETHERNET_DEFAULT_COST = 101.0;
+    private static final double DEFAULT_HOP_COST = 1.0;
+
     private static final double INITIAL_COST = 0.0;
     private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 1.0;
     private static final int DEFAULT_MAX_PATHS = 10;
+    private static final int INFINITY = 9999;
+
 
 
     /**
@@ -75,6 +79,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             new ScalarWeight(ETHERNET_DEFAULT_COST);
     public static final ScalarWeight INITIAL_WEIGHT =
             new ScalarWeight(INITIAL_COST);
+    public static final ScalarWeight HOP_DEFAULT_WEIGHT =
+            new ScalarWeight(DEFAULT_HOP_COST);
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
             new KShortestPathsSearch<>();
     private final ProviderId providerId = new ProviderId("FNL", "Ding");
@@ -97,6 +103,21 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             multiValued = false)
     String plconstraint = null;
 
+    @Option(name = "-lat", aliases = "--latency",
+            description = "Latency constraint", required = false,
+            multiValued = false)
+    String latconstraint = null;
+
+    @Option(name = "-band", aliases = "--bandwidth",
+            description = "Bandwidth constraint", required = false,
+            multiValued = false)
+    String bwconstraint = null;
+
+    @Option(name = "-mm", aliases = "--millimeterwave",
+            description = "Use the millimeter wave link weight", required = false,
+            multiValued = false)
+    boolean mmwave = false;
+
 
     boolean filter = false;
 
@@ -104,9 +125,13 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     protected HostService hostService;
     protected TopologyService topologyService;
     protected double totalPs = 1.0;
+    protected double totalLatency = 0.0;
     protected double totalLoss;
+    protected double bandwidth;
     protected int maxpaths = DEFAULT_MAX_PATHS;
-    protected double packetlossconstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
+    protected double packetlossConstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
+    protected double latencyConstraint = INFINITY;
+    protected double bandwidthConstraint = INFINITY;
 
 
     protected void init() {
@@ -114,7 +139,15 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             maxpaths = Integer.valueOf(k);
         }
         if (!isNullOrEmpty(plconstraint)) {
-            packetlossconstraint = Double.parseDouble(plconstraint);
+            packetlossConstraint = Double.parseDouble(plconstraint);
+            filter = true;
+        }
+        if (!isNullOrEmpty(latconstraint)) {
+            latencyConstraint = Double.parseDouble(latconstraint);
+            filter = true;
+        }
+        if (!isNullOrEmpty(bwconstraint)) {
+            bandwidthConstraint = Double.parseDouble(bwconstraint);
             filter = true;
         }
         pathService = get(PathService.class);
@@ -128,53 +161,107 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         HostId dst = HostId.hostId(dstArg);
         Host srchost = hostService.getHost(src);
         Host dsthost = hostService.getHost(dst);
-        DeviceId srcLoc = srchost.location().deviceId();
-        DeviceId dstLoc = dsthost.location().deviceId();
         DefaultTopology.setDefaultMaxPaths(maxpaths);
         DefaultTopology.setDefaultGraphPathSearch(KSP);
-        MMwaveLinkWeight w = new MMwaveLinkWeight();
-        Set<Path> paths = pathService.getPaths(src, dst, w);
+        MMwaveLinkWeight mMwaveLinkWeight = new MMwaveLinkWeight();
+        HopLinkWeight hopLinkWeight = new HopLinkWeight();
+        Set<Path> paths;
+        if (mmwave) {
+             paths = pathService.getPaths(src, dst, mMwaveLinkWeight);
+        } else {
+            paths = pathService.getPaths(src, dst, hopLinkWeight);
+        }
         if (paths.isEmpty()) {
             print("The path is empty!");
             return;
         }
         Link srclink = getEdgeLink(srchost, true);
         Link dstlink = getEdgeLink(dsthost, false);
-        Set<Path> result = new HashSet<>();
+        List<Path> result = new ArrayList<>();
+        List<Double> resultMaxband = new ArrayList<>();
+        List<Double> resultPl = new ArrayList<>();
+        List<Double> resultLat = new ArrayList<>();
+        List<Path> finalResult = new ArrayList<>();
+        List<Double> finalResultMaxband = new ArrayList<>();
+
+
         Iterator<Path> it = paths.iterator();
-        //Here is not good to use foreach() because we can't break it.
         while (it.hasNext()) {
-            Path potentialpath = it.next();
-            List<Link> pathlinks = potentialpath.links();
+            double maxBand = 0.0;
+            Path potentialPath = it.next();
+            int count = 0;
+            List<Link> pathlinks = potentialPath.links();
+            for (Link link : pathlinks) {
+                String band = link.annotations().value("bandwidth");
+                if (!isNullOrEmpty(band)) {
+                    bandwidth = Double.parseDouble(band);
+                } else {
+                    bandwidth = 0;
+                }
+                if (bandwidth > bandwidthConstraint) {
+                    break;
+                } else if (bandwidth > maxBand) {
+                    maxBand = bandwidth;
+                    count = count + 1;
+                } else {
+                    count = count + 1;
+                }
+            }
+            if (count == pathlinks.size()) {
+                result.add(potentialPath);
+                resultMaxband.add(maxBand);
+            }
+        }
+        for (int i = 0; i < result.size(); i++) {
+            List<Link> pathlinks = result.get(i).links();
             for (Link pathlink : pathlinks) {
-                String v = pathlink.annotations().value("length");
-                if (v != null) {
-                    double ps = Psuccess.getPs(Double.parseDouble(v));
+                String len = pathlink.annotations().value("length");
+                if (!isNullOrEmpty(len)) {
+                    double ps = Psuccess.getPs(Double.parseDouble(len));
                     totalPs = totalPs * ps;
+                }
+                String lat = pathlink.annotations().value("mmlatency");
+                if (!isNullOrEmpty(lat)) {
+                    double latency = Double.parseDouble(lat);
+                    totalLatency = totalLatency + latency;
                 }
             }
             totalLoss = 1 - totalPs;
             // If the path's loss is higher than the constraint, continue.
-            // Otherwise put it to the result and go out of the loop.
-            if (totalLoss > packetlossconstraint) {
-                totalPs = 1;
+            // Otherwise put it to the result.
+            if (totalLoss < packetlossConstraint
+                    && totalLatency < latencyConstraint) {
+                finalResult.add(result.get(i));
+                finalResultMaxband.add(resultMaxband.get(i));
+                resultPl.add(totalLoss);
+                resultLat.add(totalLatency);
+                totalPs = 1.0;
+                totalLatency = 0.0;
             } else {
-                result.add(potentialpath);
-                break;
+                totalPs = 1.0;
+                totalLatency = 0.0;
             }
         }
             if (outputJson()) {
                 print("%s", json(this, result));
             } else if (filter) {
-                 if (!result.isEmpty()) {
-                    for (Path path : result) {
-                        String loss = String.valueOf((int) (totalLoss * 100)) + "%";
-                        String constraint = String.valueOf(packetlossconstraint * 100) + "%";
-                        print("The total packet loss is %s below %s", loss, constraint);
-                        print(pathString(path, srclink, dstlink));
+                 if (!finalResult.isEmpty()) {
+                     print("There are %s paths which satify the requirements", finalResult.size());
+                     for (int i = 0; i < finalResult.size(); i++) {
+                         String loss = String.valueOf((int) (resultPl.get(i) * 100)) + "%";
+                         String plConstraint = String.valueOf(packetlossConstraint * 100) + "%";
+                         String latency = String.valueOf((resultLat.get(i))) + "ms";
+                         String latConstraint = String.valueOf(latencyConstraint) + "ms";
+                         print("The total packet loss is %s below %s", loss, plConstraint);
+                         print("The total latency is %s below %s ", latency, latConstraint);
+                         print("The bandwidth of each link in the path is below %s ",
+                                 String.valueOf(bandwidthConstraint) + "bps");
+                         print("The max bandwidth in the path is %s ",
+                                 String.valueOf(finalResultMaxband.get(i)) + "bps");
+                         print(pathString(finalResult.get(i), srclink, dstlink));
                      }
                     } else {
-                        print("No path satisfies the packet loss constraint!");
+                        print("No path meets the requirements!");
                     }
             } else {
                 for (Path path : paths) {
@@ -233,6 +320,31 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         public Weight weight(TopologyEdge edge) {
 
            return getWeight(edge.link());
+        }
+
+        @Override
+        public Weight getInitialWeight() {
+            return INITIAL_WEIGHT;
+        }
+
+        /**
+         * Weight value for null path (without links).
+         */
+        @Override
+        public Weight getNonViableWeight() {
+            return ScalarWeight.NON_VIABLE_WEIGHT;
+        }
+    }
+
+    /**
+     *  Hop counts on each Edge.
+     **/
+    class HopLinkWeight implements LinkWeigher {
+
+        @Override
+        public Weight weight(TopologyEdge edge) {
+
+            return HOP_DEFAULT_WEIGHT;
         }
 
         @Override

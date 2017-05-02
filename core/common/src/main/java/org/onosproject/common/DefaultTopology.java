@@ -431,7 +431,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
         }
 
         GraphPathSearch.Result<TopologyVertex, TopologyEdge> result =
-                SUURBALLE.search(graph, srcV, dstV, weigher, maxpathss);
+                SUURBALLE.search(graph, srcV, dstV, weigher, ALL_PATHS);
         ImmutableSet.Builder<DisjointPath> builder = ImmutableSet.builder();
         for (org.onlab.graph.Path<TopologyVertex, TopologyEdge> path : result.paths()) {
             DisjointPath disjointPath =
@@ -468,7 +468,7 @@ public class DefaultTopology extends AbstractModel implements Topology {
         SrlgGraphSearch<TopologyVertex, TopologyEdge> srlg =
                 new SrlgGraphSearch<>(riskProfile);
         GraphPathSearch.Result<TopologyVertex, TopologyEdge> result =
-                srlg.search(graph, srcV, dstV, weigher, maxpathss);
+                srlg.search(graph, srcV, dstV, weigher, ALL_PATHS);
         ImmutableSet.Builder<DisjointPath> builder = ImmutableSet.builder();
         for (org.onlab.graph.Path<TopologyVertex, TopologyEdge> path : result.paths()) {
             DisjointPath disjointPath =

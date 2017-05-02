@@ -59,7 +59,6 @@ import org.onosproject.net.intent.IntentListener;
 import org.onosproject.net.intent.IntentEvent;
 import org.onosproject.net.intent.Key;
 import org.onosproject.net.intent.IntentState;
-import org.onosproject.net.intent.constraint.PacketLossConstraint;
 import org.onosproject.net.link.LinkEvent;
 import org.onosproject.net.link.LinkListener;
 import org.onosproject.ui.JsonUtils;
