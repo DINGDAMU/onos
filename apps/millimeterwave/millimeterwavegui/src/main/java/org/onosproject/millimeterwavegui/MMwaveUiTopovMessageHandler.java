@@ -30,6 +30,7 @@ import org.onosproject.net.link.LinkService;
 import org.onosproject.ui.RequestHandler;
 import org.onosproject.ui.UiConnection;
 import org.onosproject.ui.UiMessageHandler;
+import org.onosproject.ui.topo.Mod;
 import org.onosproject.ui.topo.TopoJson;
 import org.onosproject.ui.topo.DeviceHighlight;
 import org.onosproject.ui.topo.Highlights;
@@ -55,6 +56,7 @@ public class MMwaveUiTopovMessageHandler extends UiMessageHandler {
     private static final String MMWAVE_TOPOV_DISPLAY_UPDATE = "mmwaveTopovDisplayUpdate";
     private static final String MMWAVE_TOPOV_DISPLAY_STOP = "mmwaveTopovDisplayStop";
 
+    private static final Mod PORT_TRAFFIC_YELLOW = new Mod("port-traffic-yellow");
 
 
 
@@ -278,7 +280,7 @@ public class MMwaveUiTopovMessageHandler extends UiMessageHandler {
 
         Highlights highlights = new Highlights();
         for (MMwaveDemoLink dlink : linkMap.biLinks()) {
-            highlights.add(dlink.highlight(null));
+            highlights.add(dlink.highlight(null).addMod(PORT_TRAFFIC_YELLOW));
         }
 
         sendHighlights(highlights);
