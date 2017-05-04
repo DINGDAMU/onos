@@ -81,7 +81,10 @@
                 gid: 'microwave'
             },
             V: {
-                cb: function () { tts.showRelatedIntents(); },
+
+                cb: function () {
+                    tts.showRelatedIntents();
+                },
                 tt: 'Show all related intents',
                 gid: 'm_relatedIntents'
             },
@@ -168,13 +171,13 @@
 
     // invoke code to register with the overlay service
     angular.module('ovMmwaveTopov')
-        .run(['$log', 'TopoOverlayService', 'mmwaveTopovDemoService','TopoTrafficService',
+        .run(['$log', 'TopoOverlayService', 'TopoTrafficService', 'mmwaveTopovDemoService',
 
-        function (_$log_, _tov_, _mtds_,_tts_) {
+        function (_$log_, _tov_, _tts_, _mtds_) {
             $log = _$log_;
             tov = _tov_;
-            mtds = _mtds_;
             tts = _tts_;
+            mtds = _mtds_;
             tov.register(overlay);
         }]);
 

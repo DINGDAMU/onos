@@ -31,89 +31,9 @@
         displayStop = 'mmwaveTopovDisplayStop';
 
 
-    // internal state
-    var trafficMode = null,
-        hoverMode = null;
 
 
 
-
-    // === -------------------------------------
-    // ----------------
-    //  Helper functions
-
-    // invoked in response to change in selection and/or mouseover/out:
-    function requestTrafficForMode(mouse) {
-     if (trafficMode === 'intents') {
-            if (!mouse || hoverMode === 'intents') {
-                requestRelatedIntents();
-            }
-        } else {
-            // do nothing
-        }
-    }
-
-
-    function requestRelatedIntents() {
-        // generates payload based on current hover-state
-        var hov = api.hovered();
-
-        function hoverValid() {
-            return hoverMode === 'intents' && hov && (
-                hov.class === 'host' ||
-                hov.class === 'device' ||
-                hov.class === 'link');
-        }
-
-        if (api.somethingSelected()) {
-            wss.sendEvent('requestRelatedIntents', {
-                ids: api.selectOrder(),
-                hover: hoverValid() ? hov.id : ''
-            });
-        }
-    }
-
-
-    // === -------------------------------------------------------------
-    //  Traffic requests invoked from keystrokes or toolbar buttons...
-
-    function showRelatedIntents () {
-        trafficMode = hoverMode = 'intents';
-        requestRelatedIntents();
-        flash.flash('Related Paths');
-    }
-
-    function showPrevIntent() {
-        if (trafficMode === 'intents') {
-            hoverMode = null;
-            wss.sendEvent('requestPrevRelatedIntent');
-            flash.flash('Previous related intent');
-        }
-    }
-
-    function showNextIntent() {
-        if (trafficMode === 'intents') {
-            hoverMode = null;
-            wss.sendEvent('requestNextRelatedIntent');
-            flash.flash('Next related intent');
-        }
-    }
-
-    function showSelectedIntentTraffic() {
-        if (trafficMode === 'intents') {
-            hoverMode = null;
-            wss.sendEvent('requestSelectedIntentTraffic');
-            flash.flash('Traffic on Selected Path');
-        }
-    }
-
-    // force the system to create a single intent selection
-    function selectIntent(data) {
-        trafficMode = 'intents';
-        hoverMode = null;
-        wss.sendEvent('selectIntent', data);
-        flash.flash('Selecting Intent ' + data.key);
-    }
 
     // === ---------------------------
     // === Helper functions
@@ -167,18 +87,6 @@
 
 
             return {
-
-
-                // invoked from toolbar overlay buttons or keystrokes
-                showRelatedIntents: showRelatedIntents,
-                showPrevIntent: showPrevIntent,
-                showNextIntent: showNextIntent,
-                showSelectedIntentTraffic: showSelectedIntentTraffic,
-                selectIntent: selectIntent,
-
-                // invoked from mouseover/mouseout and selection change
-                requestTrafficForMode: requestTrafficForMode,
-
                 startDisplay: startDisplay,
                 updateDisplay: updateDisplay,
                 stopDisplay: stopDisplay,
