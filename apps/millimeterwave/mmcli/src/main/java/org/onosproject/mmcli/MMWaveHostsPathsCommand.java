@@ -47,7 +47,6 @@ import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.psuccess.Psuccess;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -157,8 +156,12 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     @Override
     protected void execute() {
         init();
+
         HostId src = HostId.hostId(srcArg);
         HostId dst = HostId.hostId(dstArg);
+        if (isNullOrEmpty(src.toString()) || isNullOrEmpty(dst.toString())) {
+            print("The src or dst host is null!");
+        }
         Host srchost = hostService.getHost(src);
         Host dsthost = hostService.getHost(dst);
         DefaultTopology.setDefaultMaxPaths(maxpaths);
@@ -187,10 +190,14 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
 
         Iterator<Path> it = paths.iterator();
         while (it.hasNext()) {
-            double maxBand = 0.0;
+            double minBand = INFINITY;
             Path potentialPath = it.next();
             int count = 0;
-            List<Link> pathlinks = potentialPath.links();
+            List<Link> links = potentialPath.links();
+            List<Link> pathlinks = new ArrayList<>();
+            for (int i = 1; i < links.size() - 1; i++) {
+                 pathlinks.add(links.get(i));
+            }
             for (Link link : pathlinks) {
                 String band = link.annotations().value("bandwidth");
                 if (!isNullOrEmpty(band)) {
@@ -198,10 +205,10 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                 } else {
                     bandwidth = 0;
                 }
-                if (bandwidth > bandwidthConstraint) {
+                if (bandwidth < bandwidthConstraint) {
                     break;
-                } else if (bandwidth > maxBand) {
-                    maxBand = bandwidth;
+                } else if (bandwidth < minBand) {
+                    minBand = bandwidth;
                     count = count + 1;
                 } else {
                     count = count + 1;
@@ -209,7 +216,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             }
             if (count == pathlinks.size()) {
                 result.add(potentialPath);
-                resultMaxband.add(maxBand);
+                resultMaxband.add(minBand);
             }
         }
         for (int i = 0; i < result.size(); i++) {
@@ -254,9 +261,9 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                          String latConstraint = String.valueOf(latencyConstraint) + "ms";
                          print("The total packet loss is %s below %s", loss, plConstraint);
                          print("The total latency is %s below %s ", latency, latConstraint);
-                         print("The bandwidth of each link in the path is below %s ",
+                         print("The bandwidth of each link in the path is greater than %s ",
                                  String.valueOf(bandwidthConstraint) + "bps");
-                         print("The max bandwidth in the path is %s ",
+                         print("The minimum bandwidth which is greater than bandwidth constraint in the path is %s ",
                                  String.valueOf(finalResultMaxband.get(i)) + "bps");
                          print(pathString(finalResult.get(i), srclink, dstlink));
                      }
