@@ -18,6 +18,7 @@ package org.onosproject.cli;
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.apache.karaf.shell.commands.Option;
+import org.onlab.util.DataRateUnit;
 import org.onosproject.cli.net.ConnectivityIntentCommand;
 import  org.onosproject.net.intent.MMWaveIntent;
 import org.onosproject.net.HostId;
@@ -25,8 +26,12 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.IntentService;
+import org.onosproject.net.intent.constraint.BandwidthConstraint;
+import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.PacketLossConstraint;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -49,6 +54,17 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
             multiValued = false)
     String plconstraint = null;
 
+    @Option(name = "-lat", aliases = "--latency",
+            description = "Latency constraint", required = false,
+            multiValued = false)
+    String latconstraint = null;
+
+    @Option(name = "-band", aliases = "--bandwidth",
+            description = "Bandwidth constraint", required = false,
+            multiValued = false)
+    String bwconstraint = null;
+
+
 
 
     @Override
@@ -64,6 +80,13 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
         List<Constraint> constraints = buildConstraints();
         if (!isNullOrEmpty(plconstraint)) {
             constraints.add(new PacketLossConstraint(Double.parseDouble(plconstraint)));
+        }
+        if (!isNullOrEmpty(latconstraint)) {
+            long lat = Long.parseLong(latconstraint);
+            constraints.add(new LatencyConstraint(Duration.of(lat, ChronoUnit.MICROS)));
+        }
+        if (!isNullOrEmpty(bwconstraint)) {
+            constraints.add(BandwidthConstraint.of(Double.parseDouble(bwconstraint), DataRateUnit.BPS));
         }
 
         MMWaveIntent intent = MMWaveIntent.builder()

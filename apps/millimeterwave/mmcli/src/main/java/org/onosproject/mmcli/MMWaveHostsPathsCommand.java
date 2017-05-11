@@ -66,8 +66,9 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
 
     private static final double INITIAL_COST = 0.0;
     private static final double DEFAULT_PACKET_LOSS_CONSTRAINT = 1.0;
+    private static final double DEFAULT_BANDWIDTH_CONSTRAINT = 0.0;
     private static final int DEFAULT_MAX_PATHS = 10;
-    private static final int INFINITY = 9999;
+    private static final int INFINITY = 99999;
 
 
 
@@ -130,7 +131,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     protected int maxpaths = DEFAULT_MAX_PATHS;
     protected double packetlossConstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
     protected double latencyConstraint = INFINITY;
-    protected double bandwidthConstraint = INFINITY;
+    protected double bandwidthConstraint = DEFAULT_BANDWIDTH_CONSTRAINT;
 
 
     protected void init() {

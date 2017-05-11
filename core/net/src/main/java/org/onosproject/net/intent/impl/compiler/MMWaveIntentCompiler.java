@@ -95,7 +95,6 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected ResourceService resourceService;
 
-    protected int maxpaths = DEFAULT_MAX_PATHS;
 
 
     @Activate
