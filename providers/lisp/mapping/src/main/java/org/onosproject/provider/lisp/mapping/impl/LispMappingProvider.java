@@ -15,6 +15,7 @@
  */
 package org.onosproject.provider.lisp.mapping.impl;
 
+import com.google.common.collect.Lists;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -24,11 +25,14 @@ import org.onosproject.lisp.ctl.LispController;
 import org.onosproject.lisp.ctl.LispMessageListener;
 import org.onosproject.lisp.ctl.LispRouterId;
 import org.onosproject.lisp.ctl.LispRouterListener;
-import org.onosproject.lisp.msg.protocols.LispMapNotify;
+import org.onosproject.lisp.msg.protocols.LispEidRecord;
 import org.onosproject.lisp.msg.protocols.LispMapRecord;
+import org.onosproject.lisp.msg.protocols.LispMapRegister;
 import org.onosproject.lisp.msg.protocols.LispMapReply;
+import org.onosproject.lisp.msg.protocols.LispMapRequest;
 import org.onosproject.lisp.msg.protocols.LispMessage;
 import org.onosproject.mapping.MappingEntry;
+import org.onosproject.mapping.MappingKey;
 import org.onosproject.mapping.MappingProvider;
 import org.onosproject.mapping.MappingProviderRegistry;
 import org.onosproject.mapping.MappingProviderService;
@@ -38,9 +42,12 @@ import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.provider.AbstractProvider;
 import org.onosproject.net.provider.ProviderId;
 import org.onosproject.provider.lisp.mapping.util.MappingEntryBuilder;
+import org.onosproject.provider.lisp.mapping.util.MappingKeyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 import static org.onosproject.mapping.MappingStore.Type.MAP_CACHE;
@@ -131,17 +138,43 @@ public class LispMappingProvider extends AbstractProvider implements MappingProv
 
         @Override
         public void handleIncomingMessage(LispRouterId routerId, LispMessage msg) {
+            if (providerService == null) {
+                log.warn("provider service has not been initialized");
+                return;
+            }
 
+            DeviceId deviceId = getDeviceId(routerId.toString());
+            switch (msg.getType()) {
+
+                case LISP_MAP_REQUEST:
+                    LispMapRequest request = (LispMapRequest) msg;
+                    List<LispEidRecord> records = request.getEids();
+                    List<MappingKey> keys = Lists.newArrayList();
+                    records.forEach(r -> keys.add(new MappingKeyBuilder(deviceService,
+                            deviceId, r.getPrefix()).build()));
+                    // TODO: returned mapping values will be converted to
+                    // protocol specifics and wrapped into a mapping record
+                    providerService.mappingQueried(keys);
+                    break;
+
+                case LISP_MAP_REGISTER:
+                    LispMapRegister register = (LispMapRegister) msg;
+                    processMappings(deviceId, register.getMapRecords(), MAP_DATABASE);
+                    break;
+
+                default:
+                    log.warn("Unhandled message type: {}", msg.getType());
+            }
         }
 
         @Override
         public void handleOutgoingMessage(LispRouterId routerId, LispMessage msg) {
             if (providerService == null) {
-                // We are shutting down, nothing to be done
+                log.warn("provider service has not been initialized");
                 return;
             }
 
-            DeviceId deviceId = DeviceId.deviceId(routerId.toString());
+            DeviceId deviceId = getDeviceId(routerId.toString());
             switch (msg.getType()) {
 
                 case LISP_MAP_REPLY:
@@ -150,8 +183,8 @@ public class LispMappingProvider extends AbstractProvider implements MappingProv
                     break;
 
                 case LISP_MAP_NOTIFY:
-                    LispMapNotify notify = (LispMapNotify) msg;
-                    processMappings(deviceId, notify.getMapRecords(), MAP_DATABASE);
+                    // not take any action for map notify, and we've already
+                    // store the mapping when receives map register message
                     break;
 
                 default:
@@ -174,6 +207,21 @@ public class LispMappingProvider extends AbstractProvider implements MappingProv
                         new MappingEntryBuilder(deviceId, r, deviceService).build();
                 providerService.mappingAdded(me, type);
             });
+        }
+    }
+
+    /**
+     * Obtains the DeviceId contains IP address of LISP router.
+     *
+     * @param ip IP address
+     * @return DeviceId device identifier
+     */
+    private DeviceId getDeviceId(String ip) {
+        try {
+            return DeviceId.deviceId(new URI(SCHEME_NAME, ip, null));
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Unable to build deviceID for device "
+                    + ip, e);
         }
     }
 }

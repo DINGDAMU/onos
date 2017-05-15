@@ -47,7 +47,10 @@ import java.util.regex.Pattern;
 
 /**
  * Implementation of a NETCONF session to talk to a device.
+ *
+ * @deprecated in 1.10.0
  */
+@Deprecated
 public class NetconfSessionImpl implements NetconfSession {
 
     private static final Logger log = LoggerFactory
@@ -257,6 +260,7 @@ public class NetconfSessionImpl implements NetconfSession {
 
     }
 
+    @Override
     public void checkAndReestablish() throws NetconfException {
         if (sshSession.getState() != Channel.STATE_OPEN) {
             try {

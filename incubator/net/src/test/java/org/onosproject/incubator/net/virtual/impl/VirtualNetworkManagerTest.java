@@ -70,7 +70,6 @@ import org.onosproject.net.flowobjective.FlowObjectiveService;
 import org.onosproject.net.group.GroupService;
 import org.onosproject.net.host.HostService;
 import org.onosproject.net.intent.FakeIntentManager;
-import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.IntentService;
 import org.onosproject.net.intent.IntentState;
 import org.onosproject.net.intent.Key;
@@ -83,11 +82,11 @@ import org.onosproject.net.topology.Topology;
 import org.onosproject.net.topology.TopologyService;
 import org.onosproject.store.service.TestStorageService;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
@@ -107,7 +106,6 @@ public class VirtualNetworkManagerTest extends VirtualNetworkTestUtil {
     private TestListener listener = new TestListener();
     private TestableIntentService intentService = new FakeIntentManager();
     private TopologyService topologyService;
-    private IdGenerator idGenerator = new MockIdGenerator();
 
     private ConnectPoint cp6;
     private ConnectPoint cp7;
@@ -117,8 +115,7 @@ public class VirtualNetworkManagerTest extends VirtualNetworkTestUtil {
     @Before
     public void setUp() throws Exception {
         virtualNetworkManagerStore = new DistributedVirtualNetworkStore();
-        Intent.unbindIdGenerator(idGenerator);
-        Intent.bindIdGenerator(idGenerator);
+        MockIdGenerator.cleanBind();
 
         coreService = new TestCoreService();
         TestUtils.setField(virtualNetworkManagerStore, "coreService", coreService);
@@ -145,7 +142,7 @@ public class VirtualNetworkManagerTest extends VirtualNetworkTestUtil {
         manager.removeListener(listener);
         manager.deactivate();
         NetTestTools.injectEventDispatcher(manager, null);
-        Intent.unbindIdGenerator(idGenerator);
+        MockIdGenerator.cleanBind();
     }
 
     /**
@@ -189,6 +186,18 @@ public class VirtualNetworkManagerTest extends VirtualNetworkTestUtil {
     }
 
     /**
+     * Tests removal of a virtual network twice.
+     */
+    @Test(expected = IllegalStateException.class)
+    public void testRemoveVnetTwice() {
+        manager.registerTenantId(TenantId.tenantId(tenantIdValue1));
+        VirtualNetwork virtualNetwork =
+                manager.createVirtualNetwork(TenantId.tenantId(tenantIdValue1));
+        manager.removeVirtualNetwork(virtualNetwork.id());
+        manager.removeVirtualNetwork(virtualNetwork.id());
+    }
+
+    /**
      * Tests add and remove of virtual networks.
      */
     @Test
@@ -205,10 +214,6 @@ public class VirtualNetworkManagerTest extends VirtualNetworkTestUtil {
             manager.removeVirtualNetwork(virtualNetwork.id());
             assertEquals("The expected virtual network size does not match",
                          --remaining, manager.getVirtualNetworks(TenantId.tenantId(tenantIdValue1)).size());
-            // attempt to remove the same virtual network again.
-            manager.removeVirtualNetwork(virtualNetwork.id());
-            assertEquals("The expected virtual network size does not match",
-                         remaining, manager.getVirtualNetworks(TenantId.tenantId(tenantIdValue1)).size());
         }
         virtualNetworks = manager.getVirtualNetworks(TenantId.tenantId(tenantIdValue1));
         assertTrue("The virtual network set should be empty.", virtualNetworks.isEmpty());

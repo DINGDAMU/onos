@@ -22,7 +22,8 @@
 (function () {
     'use strict';
 
-    var $log, Collection, Model, ts, sus, t2zs, t2vs, t2lps, fn, ps, t2mss;
+    var $log, Collection, Model, ts, sus, t2zs, t2vs, t2lps,
+        fn, ps, t2mss, t2ts;
 
     var linkLabelOffset = '0.35em';
 
@@ -134,7 +135,8 @@
                         enhanced: this.get('enhanced'),
                         selected: this.get('selected'),
                         suppressedmax: this.get('mastership')
-                    }
+                    },
+                    (this.linkLabel) ? this.linkLabel.linkLabelCSSClass() : null
                 );
             },
             expected: function () {
@@ -154,6 +156,7 @@
                 // Update class names when the model changes
                 if (this.el) {
                     this.el.attr('class', this.svgClassName());
+                    this.setScale();
                 }
             },
             enhance: function () {
@@ -209,9 +212,11 @@
             unenhance: function () {
                 this.set('enhanced', false);
                 d3.select('.topo2-portLabels').selectAll('.portLabel').remove();
+                this.setScale();
             },
             amt: function (numLinks, index) {
-                var gap = 6;
+                var bbox = this.get('source').el.node().getBBox(),
+                    gap = bbox.width / 4;
                 return (index - ((numLinks - 1) / 2)) * gap;
             },
             defaultPosition: function () {
@@ -237,7 +242,6 @@
                 };
             },
             setPosition: function () {
-
                 var multiline = this.get('multiline');
                 if (multiline) {
                     var offsetAmt = this.amt(multiline.deviceLinks, multiline.index);
@@ -248,6 +252,14 @@
 
                 if (this.get('enhanced')) {
                     this.updatePortPosition();
+                }
+
+                if (this.el) {
+                    this.el.attr(this.get('position'));
+                }
+
+                if (this.linkLabel) {
+                    this.linkLabel.setPosition();
                 }
             },
             updatePortPosition: function () {
@@ -283,7 +295,6 @@
                 }
             },
             locatePortLabel: function (src) {
-
                 var offset = 32 / (labelDim * t2zs.scale()),
                     sourceX = this.get('position').x1,
                     sourceY = this.get('position').y1,
@@ -300,7 +311,7 @@
 
                 var dx = farX - nearX,
                     dy = farY - nearY,
-                    k = ((20 * t2zs.scale()) * offset) / dist(dx, dy);
+                    k = (32 * offset) / dist(dx, dy);
 
                 return { x: k * dx + nearX, y: k * dy + nearY };
             },
@@ -318,11 +329,41 @@
                 this.setVisibility();
                 this.setScale();
             },
+            linkWidth: function () {
+                var width = widthRatio;
+                if (this.get('enhanced')) { width = 3.5; }
+                if (this.linkLabel) {
+                    var scale = d3.scale.ordinal()
+                            .rangeRoundPoints([4, 8]),
+                        label = this.linkLabel.get('label').split(' ');
+
+                    switch (t2ts.selectedTrafficOverlay()) {
+                        case 'flowStatsBytes':
+                            scale.domain(['KB', 'MB', 'GB']);
+                            width = scale(label[1]);
+                            break;
+                        case 'portStatsBitSec':
+                            scale.domain(['Kbps', 'Mbps', 'Gbps']);
+                            width = scale(label[1]);
+                            break;
+                        case 'portStatsPktSec':
+                            scale = d3.scale.linear()
+                                .domain([1, 10, 100, 1000, 10000])
+                                .range(d3.range(3.5, 9))
+                                .clamp(true);
+                            width = scale(parseInt(label[0]));
+                    }
+                }
+
+                return width;
+            },
             setScale: function () {
 
                 if (!this.el) return;
 
-                var width = linkScale(widthRatio) / t2zs.scale();
+                var linkWidthRatio = this.linkWidth();
+
+                var width = linkScale(linkWidthRatio) / t2zs.scale();
                 this.el.attr('stroke-width', width + 'px');
 
                 var labelScale = labelDim / (labelDim * t2zs.scale());
@@ -332,6 +373,11 @@
                     .selectAll('*')
                     .style('transform', 'scale(' + labelScale + ')');
 
+                this.setPosition();
+
+                if (this.linkLabel) {
+                    this.linkLabel.setScale();
+                }
             },
             update: function () {
                 if (this.get('enhanced')) {
@@ -380,9 +426,9 @@
         '$log', 'Topo2Collection', 'Topo2Model',
         'ThemeService', 'SvgUtilService', 'Topo2ZoomService',
         'Topo2ViewService', 'Topo2LinkPanelService', 'FnService', 'PrefsService',
-        'Topo2MastershipService',
+        'Topo2MastershipService', 'Topo2TrafficService',
         function (_$log_, _c_, _Model_, _ts_, _sus_,
-            _t2zs_, _t2vs_, _t2lps_, _fn_, _ps_, _t2mss_) {
+            _t2zs_, _t2vs_, _t2lps_, _fn_, _ps_, _t2mss_, _t2ts_) {
 
             $log = _$log_;
             ts = _ts_;
@@ -395,6 +441,7 @@
             fn = _fn_;
             ps = _ps_;
             t2mss = _t2mss_;
+            t2ts = _t2ts_;
 
             return {
                 createLinkCollection: createLinkCollection

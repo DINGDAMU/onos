@@ -257,7 +257,7 @@ public class NetconfDeviceProvider extends AbstractProvider
     @Override
     public void triggerProbe(DeviceId deviceId) {
         // TODO: This will be implemented later.
-        log.info("Triggering probe on device {}", deviceId);
+        log.debug("Should be triggering probe on device {}", deviceId);
     }
 
     @Override
@@ -291,7 +291,6 @@ public class NetconfDeviceProvider extends AbstractProvider
         Device device = deviceService.getDevice(deviceId);
         String ip;
         int port;
-        Socket socket = null;
         if (device != null) {
             ip = device.annotations().value(IPADDRESS);
             port = Integer.parseInt(device.annotations().value(PORT));
@@ -310,22 +309,12 @@ public class NetconfDeviceProvider extends AbstractProvider
             }
         }
         //test connection to device opening a socket to it.
-        try {
-            socket = new Socket(ip, port);
+        try (Socket socket = new Socket(ip, port)) {
             log.debug("rechability of {}, {}, {}", deviceId, socket.isConnected(), !socket.isClosed());
             return socket.isConnected() && !socket.isClosed();
         } catch (IOException e) {
             log.info("Device {} is not reachable", deviceId);
             return false;
-        } finally {
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    log.debug("Test Socket failed {} ", deviceId);
-                    return false;
-                }
-            }
         }
     }
 
@@ -382,7 +371,7 @@ public class NetconfDeviceProvider extends AbstractProvider
     private void checkAndUpdateDevice(DeviceId deviceId, DeviceDescription deviceDescription) {
         Device device = deviceService.getDevice(deviceId);
         if (device == null) {
-            log.warn("Device {} has not been added to store, " +
+            log.debug("Device {} has not been added to store, " +
                              "since it's not reachable", deviceId);
         } else {
             boolean isReachable = isReachable(deviceId);
@@ -435,8 +424,8 @@ public class NetconfDeviceProvider extends AbstractProvider
                                                      portStatistics);
             }
         } else {
-            log.warn("No port statistics getter behaviour for device {}",
-                     device.id());
+            log.debug("No port statistics getter behaviour for device {}",
+                      device.id());
         }
     }
 

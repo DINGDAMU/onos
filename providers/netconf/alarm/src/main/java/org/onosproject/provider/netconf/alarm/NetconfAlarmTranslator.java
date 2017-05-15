@@ -82,7 +82,7 @@ public class NetconfAlarmTranslator implements AlarmTranslator {
         } catch (SAXException | IOException | ParserConfigurationException |
                 UnsupportedOperationException | IllegalArgumentException |
                 TransformerException e) {
-            log.error("Exception thrown translating {} from {}.", message, deviceId);
+            log.error("Exception thrown translating message from {}.", deviceId, e);
             return ImmutableSet.of();
         }
     }
@@ -96,7 +96,7 @@ public class NetconfAlarmTranslator implements AlarmTranslator {
 
     private long parseDate(String timeStr)
             throws UnsupportedOperationException, IllegalArgumentException {
-        return ISODateTimeFormat.dateTimeNoMillis().parseMillis(timeStr);
+        return ISODateTimeFormat.dateTime().parseMillis(timeStr);
     }
 
     private static String nodeToString(Node rootNode) throws TransformerException {

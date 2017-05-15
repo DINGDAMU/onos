@@ -3,6 +3,7 @@ UTILS = [
     '//utils/junit:onlab-junit',
     '//utils/misc:onlab-misc',
     '//utils/rest:onlab-rest',
+    '//tools/build/conf:onos-build-conf',
 ]
 
 API = [
@@ -96,6 +97,9 @@ ONOS_DRIVERS = [
     '//drivers/lisp:onos-drivers-lisp-oar',
     '//drivers/flowspec:onos-drivers-flowspec-oar',
     '//drivers/huawei:onos-drivers-huawei-oar',
+#   Removed until we can handle v1.12 of onos-yang-tools - in the mean time build manually with Maven
+#   '//drivers/microsemi/ea1000driver:onos-drivers-microsemi-ea1000driver-oar',
+    '//drivers/oplink:onos-drivers-oplink-oar',
 ]
 
 ONOS_PROVIDERS = [
@@ -163,6 +167,7 @@ ONOS_APPS = [
     '//apps/test/loadtest:onos-apps-test-loadtest-oar',
     '//apps/test/netcfg-monitor:onos-apps-test-netcfg-monitor-oar',
     '//apps/test/messaging-perf:onos-apps-test-messaging-perf-oar',
+    '//apps/test/transaction-perf:onos-apps-test-transaction-perf-oar',
     '//apps/virtualbng:onos-apps-virtualbng-oar',
     '//apps/vpls:onos-apps-vpls-oar',
     '//apps/vrouter:onos-apps-vrouter-oar',
@@ -193,11 +198,13 @@ ONOS_APPS = [
     '//apps/network-troubleshoot:onos-apps-network-troubleshoot-oar',
     '//apps/l3vpn:onos-apps-l3vpn-oar',
     '//apps/millimeterwave:onos-apps-millimeterwave-oar',
-
+    '//apps/openroadm:onos-apps-openroadm-oar',
 ]
 
 MODELS = [
     '//models/demo:onos-models-demo-oar',
+    '//models/openroadm:onos-models-openroadm-oar',
+    '//models/l3vpn:onos-models-l3vpn-oar',
 ]
 
 APP_JARS = [

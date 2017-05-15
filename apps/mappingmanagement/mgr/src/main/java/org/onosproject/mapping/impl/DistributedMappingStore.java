@@ -166,6 +166,15 @@ public class DistributedMappingStore
     }
 
     @Override
+    public Iterable<MappingEntry> getAllMappingEntries(Type type) {
+
+        Map<MappingId, Mapping> storeMap = getStoreMap(type);
+        return ImmutableList.copyOf(storeMap.values().stream()
+                                            .map(DefaultMappingEntry::new)
+                                            .collect(Collectors.toList()));
+    }
+
+    @Override
     public MappingEntry getMappingEntry(Type type, Mapping mapping) {
 
         return new DefaultMappingEntry(getStoreMap(type).get(mapping.id()));
@@ -182,7 +191,7 @@ public class DistributedMappingStore
     }
 
     @Override
-    public void storeMapping(Type type, Mapping mapping) {
+    public void storeMapping(Type type, MappingEntry mapping) {
 
         getStore(type).put(mapping.id(), mapping);
     }

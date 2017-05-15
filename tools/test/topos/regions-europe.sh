@@ -16,7 +16,7 @@ onos ${host} null-simulation start custom
 
 
 ## unfortunately, it takes a time for the sim to start up
-#  this is not ideal...
+#  this is not ideal... but we'll live with it for now
 
 echo
 echo "Sleeping while sim starts up... (${sleepfor} seconds)..."
@@ -28,17 +28,18 @@ sleep ${sleepfor}
 ### Start by adding Country regions
 # Note that Long/Lat places region icon nicely in the country center
 
-# region-add <region-id> <region-name> <region-type> <lat/Y> <long/X> <region-master>
+# region-add <region-id> <region-name> <region-type> \
+#   <lat/Y> <long/X> <locType> <region-master>
 
 onos ${host} <<-EOF
 
-region-add rUK "United Kingdom" COUNTRY 52.206035 -1.310384 ${host}
-region-add rIT "Italy"   COUNTRY 44.447951  11.093161 ${host}
-region-add rFR "France"  COUNTRY 47.066264  2.711458 ${host}
-region-add rDE "Germany" COUNTRY 50.863152  9.761971 ${host}
-region-add rES "Spain"   COUNTRY 40.416704 -3.7035824 ${host}
+region-add rUK "United Kingdom" COUNTRY 52.206035 -1.310384 geo ${host}
+region-add rIT "Italy"   COUNTRY 44.447951  11.093161 geo ${host}
+region-add rFR "France"  COUNTRY 47.066264  2.711458 geo ${host}
+region-add rDE "Germany" COUNTRY 50.863152  9.761971 geo ${host}
+region-add rES "Spain"   COUNTRY 40.416704 -3.7035824 geo ${host}
 
-region-add rMilan "Milan" METRO 45.4654 9.1859 ${host}
+region-add rMilan "Milan" METRO 45.4654 9.1859 geo ${host}
 
 EOF
 
@@ -111,7 +112,6 @@ null-create-link direct London Leeds
 null-create-link direct Leeds Warrington
 
 # -- UK Peers
-## TODO: figure out why this data isn't getting put into runtime config?!
 region-add-peer-loc rUK rES 50.4060  -3.3860
 region-add-peer-loc rUK rFR 50.4060  -1.8482
 region-add-peer-loc rUK rIT 50.4060  -0.1361

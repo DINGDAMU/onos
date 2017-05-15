@@ -73,6 +73,7 @@ import org.slf4j.Logger;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -125,7 +126,7 @@ public class DistributedVirtualNetworkStore
             });
 
     // Listener for virtual device events
-    private final MapEventListener<DeviceId, VirtualDevice> virtualDeviceMapListener =
+    private final MapEventListener<VirtualDeviceId, VirtualDevice> virtualDeviceMapListener =
             new InternalMapListener<>((mapEventType, virtualDevice) -> {
                 VirtualNetworkEvent.Type eventType =
                         mapEventType.equals(MapEvent.Type.INSERT)
@@ -143,8 +144,8 @@ public class DistributedVirtualNetworkStore
     private Map<TenantId, Set<NetworkId>> tenantIdNetworkIdSetMap;
 
     // Track virtual devices by device Id
-    private ConsistentMap<DeviceId, VirtualDevice> deviceIdVirtualDeviceConsistentMap;
-    private Map<DeviceId, VirtualDevice> deviceIdVirtualDeviceMap;
+    private ConsistentMap<VirtualDeviceId, VirtualDevice> deviceIdVirtualDeviceConsistentMap;
+    private Map<VirtualDeviceId, VirtualDevice> deviceIdVirtualDeviceMap;
 
     // Track device IDs by network Id
     private ConsistentMap<NetworkId, Set<DeviceId>> networkIdDeviceIdSetConsistentMap;
@@ -181,6 +182,7 @@ public class DistributedVirtualNetworkStore
                            .register(VirtualNetwork.class)
                            .register(DefaultVirtualNetwork.class)
                            .register(VirtualDevice.class)
+                           .register(VirtualDeviceId.class)
                            .register(DefaultVirtualDevice.class)
                            .register(VirtualHost.class)
                            .register(DefaultVirtualHost.class)
@@ -226,7 +228,7 @@ public class DistributedVirtualNetworkStore
                 .build();
         tenantIdNetworkIdSetMap = tenantIdNetworkIdSetConsistentMap.asJavaMap();
 
-        deviceIdVirtualDeviceConsistentMap = storageService.<DeviceId, VirtualDevice>consistentMapBuilder()
+        deviceIdVirtualDeviceConsistentMap = storageService.<VirtualDeviceId, VirtualDevice>consistentMapBuilder()
                 .withSerializer(SERIALIZER)
                 .withName("onos-deviceId-virtualdevice")
                 .withRelaxedReadConsistency()
@@ -353,35 +355,35 @@ public class DistributedVirtualNetworkStore
     @Override
     public void removeNetwork(NetworkId networkId) {
         // Make sure that the virtual network exists before attempting to remove it.
-        if (networkExists(networkId)) {
-            //Remove all the devices of this network
-            Set<VirtualDevice> deviceSet = getDevices(networkId);
-            if (deviceSet != null) {
-                deviceSet.forEach(virtualDevice -> removeDevice(networkId, virtualDevice.id()));
-            }
-            //TODO update both maps in one transaction.
+        checkState(networkExists(networkId), "The network does not exist.");
 
-            VirtualNetwork virtualNetwork = networkIdVirtualNetworkMap.remove(networkId);
-            if (virtualNetwork == null) {
-                return;
-            }
-            TenantId tenantId = virtualNetwork.tenantId();
-
-            Set<NetworkId> networkIdSet = new HashSet<>();
-            tenantIdNetworkIdSetMap.get(tenantId).forEach(networkId1 -> {
-                if (networkId1.id().equals(networkId.id())) {
-                    networkIdSet.add(networkId1);
-                }
-            });
-
-            tenantIdNetworkIdSetMap.compute(virtualNetwork.tenantId(), (id, existingNetworkIds) -> {
-                if (existingNetworkIds == null || existingNetworkIds.isEmpty()) {
-                    return new HashSet<>();
-                } else {
-                    return new HashSet<>(Sets.difference(existingNetworkIds, networkIdSet));
-                }
-            });
+        //Remove all the devices of this network
+        Set<VirtualDevice> deviceSet = getDevices(networkId);
+        if (deviceSet != null) {
+            deviceSet.forEach(virtualDevice -> removeDevice(networkId, virtualDevice.id()));
         }
+        //TODO update both maps in one transaction.
+
+        VirtualNetwork virtualNetwork = networkIdVirtualNetworkMap.remove(networkId);
+        if (virtualNetwork == null) {
+            return;
+        }
+        TenantId tenantId = virtualNetwork.tenantId();
+
+        Set<NetworkId> networkIdSet = new HashSet<>();
+        tenantIdNetworkIdSetMap.get(tenantId).forEach(networkId1 -> {
+            if (networkId1.id().equals(networkId.id())) {
+                networkIdSet.add(networkId1);
+            }
+        });
+
+        tenantIdNetworkIdSetMap.compute(virtualNetwork.tenantId(), (id, existingNetworkIds) -> {
+            if (existingNetworkIds == null || existingNetworkIds.isEmpty()) {
+                return new HashSet<>();
+            } else {
+                return new HashSet<>(Sets.difference(existingNetworkIds, networkIdSet));
+            }
+        });
     }
 
     /**
@@ -398,13 +400,17 @@ public class DistributedVirtualNetworkStore
     @Override
     public VirtualDevice addDevice(NetworkId networkId, DeviceId deviceId) {
         checkState(networkExists(networkId), "The network has not been added.");
+
         Set<DeviceId> deviceIdSet = networkIdDeviceIdSetMap.get(networkId);
         if (deviceIdSet == null) {
             deviceIdSet = new HashSet<>();
         }
+
+        checkState(!deviceIdSet.contains(deviceId), "The device already exists.");
+
         VirtualDevice virtualDevice = new DefaultVirtualDevice(networkId, deviceId);
         //TODO update both maps in one transaction.
-        deviceIdVirtualDeviceMap.put(deviceId, virtualDevice);
+        deviceIdVirtualDeviceMap.put(new VirtualDeviceId(networkId, deviceId), virtualDevice);
         deviceIdSet.add(deviceId);
         networkIdDeviceIdSetMap.put(networkId, deviceIdSet);
         return virtualDevice;
@@ -427,7 +433,7 @@ public class DistributedVirtualNetworkStore
             }
         });
 
-        if (deviceIdSet != null) {
+        if (!deviceIdSet.isEmpty()) {
             networkIdDeviceIdSetMap.compute(networkId, (id, existingDeviceIds) -> {
                 if (existingDeviceIds == null || existingDeviceIds.isEmpty()) {
                     return new HashSet<>();
@@ -436,7 +442,7 @@ public class DistributedVirtualNetworkStore
                 }
             });
 
-            deviceIdVirtualDeviceMap.remove(deviceId);
+            deviceIdVirtualDeviceMap.remove(new VirtualDeviceId(networkId, deviceId));
         }
     }
 
@@ -514,8 +520,14 @@ public class DistributedVirtualNetworkStore
         if (virtualLinkSet == null) {
             virtualLinkSet = new HashSet<>();
         }
+
         // validate that the link does not already exist in this network
-        checkState(getLink(networkId, src, dst) == null, "The virtual link already exists");
+        checkState(getLink(networkId, src, dst) == null,
+                "The virtual link already exists");
+        checkState(getLink(networkId, src, null) == null,
+                "The source connection point has been used by another link");
+        checkState(getLink(networkId, null, dst) == null,
+                "The destination connection point has been used by another link");
 
         VirtualLink virtualLink = DefaultVirtualLink.builder()
                 .networkId(networkId)
@@ -536,8 +548,14 @@ public class DistributedVirtualNetworkStore
         Set<VirtualLink> virtualLinkSet = networkIdVirtualLinkSetMap.get(virtualLink.networkId());
         if (virtualLinkSet == null) {
             virtualLinkSet = new HashSet<>();
+            networkIdVirtualLinkSetMap.put(virtualLink.networkId(), virtualLinkSet);
+            log.warn("The updated virtual link {} has not been added", virtualLink);
+            return;
         }
-        virtualLinkSet.remove(virtualLink);
+        if (!virtualLinkSet.remove(virtualLink)) {
+            log.warn("The updated virtual link {} does not exist", virtualLink);
+            return;
+        }
 
         VirtualLink newVirtualLink = DefaultVirtualLink.builder()
                 .networkId(virtualLink.networkId())
@@ -557,6 +575,7 @@ public class DistributedVirtualNetworkStore
 
         final VirtualLink virtualLink = getLink(networkId, src, dst);
         if (virtualLink == null) {
+            log.warn("The removed virtual link between {} and {} does not exist", src, dst);
             return null;
         }
         Set<VirtualLink> virtualLinkSet = new HashSet<>();
@@ -584,7 +603,7 @@ public class DistributedVirtualNetworkStore
             virtualPortSet = new HashSet<>();
         }
 
-        VirtualDevice device = deviceIdVirtualDeviceMap.get(deviceId);
+        VirtualDevice device = deviceIdVirtualDeviceMap.get(new VirtualDeviceId(networkId, deviceId));
         checkNotNull(device, "The device has not been created for deviceId: " + deviceId);
 
         checkState(!virtualPortExists(networkId, deviceId, portNumber),
@@ -611,7 +630,7 @@ public class DistributedVirtualNetworkStore
                         p.number().equals(portNumber)).findFirst();
         checkState(virtualPortOptional.isPresent(), "The virtual port has not been added.");
 
-        VirtualDevice device = deviceIdVirtualDeviceMap.get(deviceId);
+        VirtualDevice device = deviceIdVirtualDeviceMap.get(new VirtualDeviceId(networkId, deviceId));
         checkNotNull(device, "The device has not been created for deviceId: "
                 + deviceId);
 
@@ -627,7 +646,7 @@ public class DistributedVirtualNetworkStore
     @Override
     public void removePort(NetworkId networkId, DeviceId deviceId, PortNumber portNumber) {
         checkState(networkExists(networkId), "The network has not been added.");
-        VirtualDevice device = deviceIdVirtualDeviceMap.get(deviceId);
+        VirtualDevice device = deviceIdVirtualDeviceMap.get(new VirtualDeviceId(networkId, deviceId));
         checkNotNull(device, "The device has not been created for deviceId: "
                 + deviceId);
 
@@ -707,7 +726,8 @@ public class DistributedVirtualNetworkStore
         Set<DeviceId> deviceIdSet = networkIdDeviceIdSetMap.get(networkId);
         Set<VirtualDevice> virtualDeviceSet = new HashSet<>();
         if (deviceIdSet != null) {
-            deviceIdSet.forEach(deviceId -> virtualDeviceSet.add(deviceIdVirtualDeviceMap.get(deviceId)));
+            deviceIdSet.forEach(deviceId -> virtualDeviceSet.add(
+                    deviceIdVirtualDeviceMap.get(new VirtualDeviceId(networkId, deviceId))));
         }
         return ImmutableSet.copyOf(virtualDeviceSet);
     }
@@ -742,7 +762,13 @@ public class DistributedVirtualNetworkStore
 
         VirtualLink virtualLink = null;
         for (VirtualLink link : virtualLinkSet) {
-            if (link.src().equals(src) && link.dst().equals(dst)) {
+            if (src == null && link.dst().equals(dst)) {
+                virtualLink = link;
+                break;
+            } else if (dst == null && link.src().equals(src)) {
+                virtualLink = link;
+                break;
+            } else if (link.src().equals(src) && link.dst().equals(dst)) {
                 virtualLink = link;
                 break;
             }
@@ -908,6 +934,48 @@ public class DistributedVirtualNetworkStore
             if (vnetEvent != null) {
                 notifyDelegate(vnetEvent);
             }
+        }
+    }
+
+    /**
+     * A wrapper class to isolate device id from other virtual networks.
+     */
+
+    private static class VirtualDeviceId {
+
+        NetworkId networkId;
+        DeviceId deviceId;
+
+        public VirtualDeviceId(NetworkId networkId, DeviceId deviceId) {
+            this.networkId = networkId;
+            this.deviceId = deviceId;
+        }
+
+        public NetworkId getNetworkId() {
+            return networkId;
+        }
+
+        public DeviceId getDeviceId() {
+            return deviceId;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(networkId, deviceId);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+
+            if (obj instanceof VirtualDeviceId) {
+                VirtualDeviceId that = (VirtualDeviceId) obj;
+                return this.deviceId.equals(that.deviceId) &&
+                        this.networkId.equals(that.networkId);
+            }
+            return false;
         }
     }
 }

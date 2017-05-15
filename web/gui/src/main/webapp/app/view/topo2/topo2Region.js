@@ -84,6 +84,9 @@
                     });
 
                     this.sortMultiLinks();
+                    this.assignPeerLocations();
+
+                    // TODO: RegionLinks are dublicated in JSON Payload
 
                     this.model.set({ subregions: t2sr.createSubRegionCollection(this.regionData.subregions, this) });
                     this.model.set({ devices: t2ds.createDeviceCollection(this.regionData.devices, this) });
@@ -107,33 +110,49 @@
                     var regex = new RegExp('^[^/]*');
                     return regex.exec(key)[0];
                 },
+                assignPeerLocations: function () {
+                    var _this = this;
+                    _.each(this.regionData.peerLocations, function (location, id) {
+                        _.each(_this.peers, function (peer) {
+                            if (peer.id === id) {
+                                peer.location = location;
+                            }
+                        })
+                    });
+                },
                 sortMultiLinks: function () {
                     var _this = this,
                         deviceConnections = {};
 
                     _.each(this.regionData.links, function (link) {
-                        var devA = _this.removePort(link.epA),
-                            devB = _this.removePort(link.epB),
-                            key = devA + '~' + devB;
 
-                        if (!deviceConnections[key]) {
-                            deviceConnections[key] = [];
+                        var epA = _this.removePort(link.epA),
+                            epB = _this.removePort(link.epB),
+                            key = epA + '~' + epB,
+                            collection = deviceConnections[key] || [],
+                            dup = _.find(collection, link);
+
+                        // TODO: Investigate why region contains dup links?!?!
+                        // FIXME: This shouldn't be needed - The backend is sending dups
+                        //        and this is preventing the client thinking its a multilink
+                        if (!dup) {
+                            collection.push(link);
                         }
 
-                        deviceConnections[key].push(link);
+                        deviceConnections[key] = collection;
                     });
 
-                    _.each(deviceConnections, function (connection) {
-                        if (connection.length > 1) {
-                            _.orderBy(connection, ['portA']);
-                            _.each(connection, function (link, index) {
+                    _.forIn(deviceConnections, function (collection) {
+                        if (collection.length > 1) {
+                            _.each(collection, function (link, index) {
                                 link.multiline = {
-                                    deviceLinks: connection.length,
+                                    deviceLinks: collection.length,
                                     index: index
-                                };
-                            })
+                                }
+                            });
                         }
-                    });
+                    })
+
                 },
                 isRootRegion: function () {
                     return this.model.get('id') === ROOT;

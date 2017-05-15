@@ -76,14 +76,10 @@ import org.onosproject.net.HostLocation;
 import org.onosproject.net.Link;
 import org.onosproject.net.LinkKey;
 import org.onosproject.net.MarkerResource;
-import org.onosproject.net.OchPort;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OchSignalType;
-import org.onosproject.net.OduCltPort;
 import org.onosproject.net.OduSignalId;
 import org.onosproject.net.OduSignalType;
-import org.onosproject.net.OmsPort;
-import org.onosproject.net.OtuPort;
 import org.onosproject.net.OtuSignalType;
 import org.onosproject.net.Port;
 import org.onosproject.net.PortNumber;
@@ -93,11 +89,8 @@ import org.onosproject.net.behaviour.protection.ProtectedTransportEndpointDescri
 import org.onosproject.net.device.DefaultDeviceDescription;
 import org.onosproject.net.device.DefaultPortDescription;
 import org.onosproject.net.device.DefaultPortStatistics;
-import org.onosproject.net.device.OchPortDescription;
-import org.onosproject.net.device.OduCltPortDescription;
-import org.onosproject.net.device.OmsPortDescription;
-import org.onosproject.net.device.OtuPortDescription;
 import org.onosproject.net.device.PortStatistics;
+import org.onosproject.net.domain.DomainIntent;
 import org.onosproject.net.flow.CompletedBatchOperation;
 import org.onosproject.net.flow.DefaultFlowEntry;
 import org.onosproject.net.flow.DefaultFlowRule;
@@ -222,7 +215,7 @@ import org.onosproject.store.Timestamp;
 import org.onosproject.store.primitives.MapUpdate;
 import org.onosproject.store.primitives.TransactionId;
 import org.onosproject.store.service.MapEvent;
-import org.onosproject.store.service.MapTransaction;
+import org.onosproject.store.service.TransactionLog;
 import org.onosproject.store.service.SetEvent;
 import org.onosproject.store.service.Task;
 import org.onosproject.store.service.Versioned;
@@ -532,7 +525,7 @@ public final class KryoNamespaces {
             .register(ExtensionSelectorType.class)
             .register(ExtensionTreatmentType.class)
             .register(TransactionId.class)
-            .register(MapTransaction.class)
+            .register(TransactionLog.class)
             .register(MapUpdate.class)
             .register(MapUpdate.Type.class)
             .register(Versioned.class)
@@ -542,23 +535,15 @@ public final class KryoNamespaces {
             .register(SetEvent.Type.class)
             .register(GroupId.class)
             .register(Annotations.class)
-            .register(OmsPort.class)
-            .register(OchPort.class)
             .register(OduSignalType.class)
             .register(OchSignalType.class)
             .register(GridType.class)
             .register(ChannelSpacing.class)
-            .register(OduCltPort.class)
             .register(CltSignalType.class)
             .register(OchSignal.class)
             .register(OduSignalId.class)
-            .register(OduCltPortDescription.class)
-            .register(OchPortDescription.class)
-            .register(OmsPortDescription.class)
             .register(TributarySlot.class)
-            .register(OtuPort.class)
             .register(OtuSignalType.class)
-            .register(OtuPortDescription.class)
             .register(
                     MplsIntent.class,
                     MplsPathIntent.class,
@@ -575,6 +560,7 @@ public final class KryoNamespaces {
             .register(ProtectedTransportIntent.class)
             .register(MarkerResource.class)
             .register(new BitSetSerializer(), BitSet.class)
+            .register(DomainIntent.class)
             .build("API");
 
     /**

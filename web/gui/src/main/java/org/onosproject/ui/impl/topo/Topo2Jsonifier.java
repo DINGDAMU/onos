@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Strings;
 import org.onlab.osgi.ServiceDirectory;
 import org.onlab.packet.IpAddress;
 import org.onosproject.cluster.ClusterService;
@@ -45,16 +46,18 @@ import org.onosproject.ui.UiExtensionService;
 import org.onosproject.ui.UiPreferencesService;
 import org.onosproject.ui.UiTopoMap;
 import org.onosproject.ui.UiTopoMapFactory;
-import org.onosproject.ui.model.topo.UiModelEvent;
 import org.onosproject.ui.model.topo.UiClusterMember;
 import org.onosproject.ui.model.topo.UiDevice;
 import org.onosproject.ui.model.topo.UiElement;
 import org.onosproject.ui.model.topo.UiHost;
 import org.onosproject.ui.model.topo.UiLink;
+import org.onosproject.ui.model.topo.UiLinkId;
+import org.onosproject.ui.model.topo.UiModelEvent;
 import org.onosproject.ui.model.topo.UiNode;
 import org.onosproject.ui.model.topo.UiRegion;
 import org.onosproject.ui.model.topo.UiSynthLink;
 import org.onosproject.ui.model.topo.UiTopoLayout;
+import org.onosproject.ui.topo.LayoutLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +75,7 @@ import static org.onosproject.net.AnnotationKeys.GRID_Y;
 import static org.onosproject.net.AnnotationKeys.LATITUDE;
 import static org.onosproject.net.AnnotationKeys.LONGITUDE;
 import static org.onosproject.ui.model.topo.UiNode.LAYER_DEFAULT;
+import static org.onosproject.ui.topo.LayoutLocation.fromCompactListString;
 
 /**
  * Facility for creating JSON messages to send to the topology view in the
@@ -98,6 +102,11 @@ public class Topo2Jsonifier {
 
     private static final String GEO = "geo";
     private static final String GRID = "grid";
+    private static final String PEER_LOCATIONS = "peerLocations";
+    private static final String LOCATION = "location";
+    private static final String LOC_TYPE = "locType";
+    private static final String LAT_OR_Y = "latOrY";
+    private static final String LONG_OR_X = "longOrX";
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -342,6 +351,10 @@ public class Topo2Jsonifier {
         payload.set("hosts", jsonGrouped(ridStr, splitHosts));
         payload.set("layerOrder", jsonStrings(layerTags));
 
+        if (!region.isRoot()) {
+            addPeerLocations(payload, region.backingRegion());
+        }
+
         return payload;
     }
 
@@ -351,10 +364,8 @@ public class Topo2Jsonifier {
         return kids;
     }
 
-    private JsonNode jsonLinks(List<UiSynthLink> links) {
-        ArrayNode synthLinks = arrayNode();
-        links.forEach(l -> synthLinks.add(json(l)));
-        return synthLinks;
+    protected JsonNode jsonLinks(List<UiSynthLink> links) {
+        return collateSynthLinks(links);
     }
 
     private ArrayNode jsonStrings(List<String> strings) {
@@ -470,30 +481,48 @@ public class Topo2Jsonifier {
     }
 
     private void addGeoGridLocation(ObjectNode node, Annotated a) {
-        List<String> lngLat = getAnnotValues(a, LONGITUDE, LATITUDE);
-        List<String> gridYX = getAnnotValues(a, GRID_Y, GRID_X);
+        List<String> latLongData = getAnnotValues(a, LATITUDE, LONGITUDE);
+        List<String> gridYXdata = getAnnotValues(a, GRID_Y, GRID_X);
 
-        if (lngLat != null) {
-            attachLocation(node, "geo", "lng", "lat", lngLat);
-        } else if (gridYX != null) {
-            attachLocation(node, "grid", "gridY", "gridX", gridYX);
+        if (latLongData != null) {
+            attachLocation(node, GEO, latLongData);
+        } else if (gridYXdata != null) {
+            attachLocation(node, GRID, gridYXdata);
         }
     }
 
     private void attachLocation(ObjectNode node, String locType,
-                                String keyA, String keyB, List<String> values) {
+                                List<String> values) {
         try {
-            double valA = Double.parseDouble(values.get(0));
-            double valB = Double.parseDouble(values.get(1));
+            double latOrY = Double.parseDouble(values.get(0));
+            double longOrX = Double.parseDouble(values.get(1));
             ObjectNode loc = objectNode()
-                    .put("type", locType)
-                    .put(keyA, valA)
-                    .put(keyB, valB);
-            node.set("location", loc);
+                    .put(LOC_TYPE, locType)
+                    .put(LAT_OR_Y, latOrY)
+                    .put(LONG_OR_X, longOrX);
+            node.set(LOCATION, loc);
 
         } catch (NumberFormatException e) {
-            log.warn("Invalid {} data: long/Y={}, lat/X={}",
-                    locType, values.get(0), values.get(1));
+            log.warn("Invalid {} data: lat/Y={}, long/X={}",
+                     locType, values.get(0), values.get(1));
+        }
+    }
+
+    private void addPeerLocations(ObjectNode node, Region r) {
+        String compact = r.annotations().value(PEER_LOCATIONS);
+        if (!Strings.isNullOrEmpty(compact)) {
+            List<LayoutLocation> locs = fromCompactListString(compact);
+
+            ObjectNode o = objectNode();
+            for (LayoutLocation ll : locs) {
+                ObjectNode lnode = objectNode()
+                        .put(LOC_TYPE, ll.locType().toString())
+                        .put(LAT_OR_Y, ll.latOrY())
+                        .put(LONG_OR_X, ll.longOrX());
+                o.set(ll.id(), lnode);
+            }
+
+            node.set(PEER_LOCATIONS, o);
         }
     }
 
@@ -547,8 +576,42 @@ public class Topo2Jsonifier {
         return node;
     }
 
-    private ObjectNode json(UiSynthLink sLink) {
-        return json(sLink.link());
+    private ArrayNode collateSynthLinks(List<UiSynthLink> links) {
+        Map<UiLinkId, Set<UiSynthLink>> collation = new HashMap<>();
+
+        // first, group together the synthlinks into sets per ID...
+        for (UiSynthLink sl : links) {
+            UiLinkId id = sl.link().id();
+            Set<UiSynthLink> rollup =
+                    collation.computeIfAbsent(id, k -> new HashSet<>());
+            rollup.add(sl);
+        }
+
+        // now add json nodes per set, and return the array of them
+        ArrayNode array = arrayNode();
+        for (UiLinkId id : collation.keySet()) {
+            array.add(json(collation.get(id)));
+        }
+        return array;
+    }
+
+    private ObjectNode json(Set<UiSynthLink> memberSet) {
+        ArrayNode rollup = arrayNode();
+        ObjectNode node = null;
+
+        boolean first = true;
+        for (UiSynthLink member : memberSet) {
+            UiLink link = member.link();
+            if (first) {
+                node = json(link);
+                first = false;
+            }
+            rollup.add(json(member.original()));
+        }
+        if (node != null) {
+            node.set("rollup", rollup);
+        }
+        return node;
     }
 
     private ObjectNode json(UiLink link) {
@@ -578,12 +641,14 @@ public class Topo2Jsonifier {
                 .put("nHosts", region.hostCount());
         // TODO: device and host counts should take into account any nested
         //       subregions. i.e. should be the sum of all devices/hosts in
-        //       all descendent subregions.
+        //       all descendant subregions.
 
         Region r = region.backingRegion();
-        // this is location data, as injected via network configuration script
-        addGeoGridLocation(node, r);
-        addProps(node, r);
+        if (r != null) {
+            // add data injected via network configuration script
+            addGeoGridLocation(node, r);
+            addProps(node, r);
+        }
 
         // this may contain location data, as dragged by user
         // (which should take precedence, over configured data)
