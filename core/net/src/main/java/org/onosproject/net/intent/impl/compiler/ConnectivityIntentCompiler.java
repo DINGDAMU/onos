@@ -37,6 +37,7 @@ import org.onosproject.net.intent.IntentCompiler;
 import org.onosproject.net.intent.IntentExtensionService;
 import org.onosproject.net.intent.constraint.BandwidthConstraint;
 import org.onosproject.net.intent.constraint.HashedPathSelectionConstraint;
+import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.MarkerConstraint;
 import org.onosproject.net.intent.constraint.PathViabilityConstraint;
 import org.onosproject.net.intent.impl.PathNotFoundException;

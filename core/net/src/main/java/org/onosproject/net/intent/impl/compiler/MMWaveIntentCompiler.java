@@ -28,7 +28,6 @@ import org.onlab.graph.KShortestPathsSearch;
 import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
 import org.onosproject.common.DefaultTopology;
-import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.DefaultPath;
 import org.onosproject.net.HostId;
 import org.onosproject.net.Path;
@@ -59,7 +58,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 import static org.onosproject.net.Link.State.ACTIVE;

@@ -17,6 +17,7 @@ package org.onosproject.net.intent.constraint;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
+import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
 import org.onosproject.net.intent.Constraint;
@@ -62,7 +63,11 @@ public class LatencyConstraint implements Constraint {
     }
 
     private double cost(Link link) {
-        return getAnnotatedValue(link, LATENCY);
+        if (link.src().elementId() instanceof DeviceId && link.dst().elementId() instanceof DeviceId) {
+            return getAnnotatedValue(link, LATENCY);
+        } else {
+            return 0;
+        }
     }
 
     // doesn't use LinkResourceService

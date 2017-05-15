@@ -77,7 +77,7 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
         }
         if (!isNullOrEmpty(latconstraint)) {
             long lat = Long.parseLong(latconstraint);
-            constraints.add(new LatencyConstraint(Duration.of(lat, ChronoUnit.MICROS)));
+            constraints.add(new LatencyConstraint(Duration.of(lat, ChronoUnit.MILLIS)));
         }
 
 
