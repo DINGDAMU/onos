@@ -15,6 +15,7 @@
  */
 package org.onosproject.net.intent.impl.compiler;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.math3.special.Erf;
@@ -27,6 +28,7 @@ import org.onlab.graph.KShortestPathsSearch;
 import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
 import org.onosproject.common.DefaultTopology;
+import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.DefaultPath;
 import org.onosproject.net.HostId;
 import org.onosproject.net.Path;
@@ -39,7 +41,6 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.host.HostService;
 import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.MMWaveIntent;
-import org.onosproject.net.intent.IntentCompiler;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.IntentCompilationException;
 import org.onosproject.net.intent.LinkCollectionIntent;
@@ -58,22 +59,29 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
+import static org.onosproject.net.Link.State.ACTIVE;
 import static org.onosproject.net.Link.Type.EDGE;
+import static org.onosproject.net.Link.Type.INDIRECT;
 import static org.onosproject.net.flow.DefaultTrafficSelector.builder;
 import static org.slf4j.LoggerFactory.getLogger;
 
 
 
 @Component(immediate = true)
-public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
+public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveIntent> {
 
     private final Logger log = getLogger(getClass());
 
     private static final String DEVICE_ID_NOT_FOUND = "Didn't find device id in the link";
 
     private static final int ETHERNET_DEFAULT_COST = 101;
+    private static final double DEFAULT_HOP_COST = 1.0;
+    private static final double INIFINITY = 999999.0;
+
+
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
             new KShortestPathsSearch<>();
     private static final int DEFAULT_MAX_PATHS = 10;
@@ -85,6 +93,13 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
      */
     public static final ScalarWeight ETHERNET_DEFAULT_WEIGHT =
             new ScalarWeight(ETHERNET_DEFAULT_COST);
+
+    /**
+     * Default weight based on default weight. (for hop-count case)
+     */
+    public static final ScalarWeight HOP_DEFAULT_WEIGHT =
+            new ScalarWeight(DEFAULT_HOP_COST);
+
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected HostService hostService;
@@ -165,6 +180,27 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
                                               Host src,
                                               Host dst,
                                               MMWaveIntent intent) {
+
+
+        Link ingressLink = path.links().get(0);
+        Link egressLink = path.links().get(path.links().size() - 1);
+
+        FilteredConnectPoint ingressPoint = getFilteredPointFromLink(ingressLink);
+        FilteredConnectPoint egressPoint = getFilteredPointFromLink(egressLink);
+
+//        // Try to allocate bandwidth
+//        List<ConnectPoint> pathCPs =
+//                path.links().stream()
+//                        .flatMap(l -> Stream.of(l.src(), l.dst()))
+//                        .collect(Collectors.toList());
+//
+//        // Allocate bandwidth if a bandwidth constraint is set
+//        allocateBandwidth(intent, pathCPs);
+
+        TrafficSelector selector = builder(intent.selector())
+                .matchEthSrc(src.mac())
+                .matchEthDst(dst.mac())
+                .build();
         /*
          * The path contains also the edge links, these are not necessary
          * for the LinkCollectionIntent.
@@ -174,16 +210,7 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
                 .filter(link -> !link.type().equals(EDGE))
                 .collect(Collectors.toSet());
 
-        Link ingressLink = path.links().get(0);
-        Link egressLink = path.links().get(path.links().size() - 1);
 
-        FilteredConnectPoint ingressPoint = getFilteredPointFromLink(ingressLink);
-        FilteredConnectPoint egressPoint = getFilteredPointFromLink(egressLink);
-
-        TrafficSelector selector = builder(intent.selector())
-                .matchEthSrc(src.mac())
-                .matchEthDst(dst.mac())
-                .build();
 
         return LinkCollectionIntent.builder()
                 .key(intent.key())
@@ -213,8 +240,32 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
     protected Path getPath(MMWaveIntent intent, HostId one, HostId two) {
         DefaultTopology.setDefaultGraphPathSearch(KSP);
         DefaultTopology.setDefaultMaxPaths(DEFAULT_MAX_PATHS);
-        Set<Path> paths = pathService.getPaths(one, two, new MMwaveLinkWeight());
-        return paths.iterator().next();
+        List<Path> filterCost = new ArrayList<>();
+        double lowestCost = INIFINITY;
+//        Set<Path> paths = pathService.getPaths(one, two, new MMwaveLinkWeight());
+        Set<Path> paths = pathService.getPaths(one, two, new HopCountLinkWeigher());
+        final List<Constraint> constraints = intent.constraints();
+        ImmutableList<Path> filtered = FluentIterable.from(paths)
+                .filter(path -> checkPath(path, constraints))
+                .toList();
+        if (filtered.isEmpty()) {
+            return null;
+        }
+        for (Path path : filtered) {
+            double cost = ((ScalarWeight) path.weight()).value();
+            if (cost <  lowestCost) {
+                lowestCost = cost;
+            }
+        }
+        for (Path path : filtered) {
+            double cost = ((ScalarWeight) path.weight()).value();
+            if (cost == lowestCost) {
+                filterCost.add(path);
+            }
+        }
+
+        //The lowest cost path is at the end of the queue
+        return filterCost.iterator().next();
 
     }
 
@@ -267,6 +318,31 @@ public class MMWaveIntentCompiler implements IntentCompiler<MMWaveIntent> {
         @Override
         public Weight getInitialWeight() {
             return ETHERNET_DEFAULT_WEIGHT;
+        }
+
+        /**
+         * Weight value for null path (without links).
+         */
+        @Override
+        public Weight getNonViableWeight() {
+            return ScalarWeight.NON_VIABLE_WEIGHT;
+        }
+    }
+
+    class HopCountLinkWeigher implements LinkWeigher {
+
+        @Override
+        public Weight weight(TopologyEdge edge) {
+            Short v = edge.link().state() ==
+                    ACTIVE ? (edge.link().type() ==
+                    INDIRECT ? Short.MAX_VALUE : 1) : -1;
+            return new ScalarWeight(v);
+
+        }
+
+        @Override
+        public Weight getInitialWeight() {
+            return HOP_DEFAULT_WEIGHT;
         }
 
         /**

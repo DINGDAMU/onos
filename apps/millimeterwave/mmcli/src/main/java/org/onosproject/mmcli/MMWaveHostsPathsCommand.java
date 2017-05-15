@@ -55,6 +55,8 @@ import java.util.stream.Collectors;
 import static org.onosproject.cli.net.LinksListCommand.compactLinkString;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
+import static org.onosproject.net.Link.State.ACTIVE;
+import static org.onosproject.net.Link.Type.INDIRECT;
 
 
 @Command(scope = "onos", name = "mmwave-hosts-paths",
@@ -263,9 +265,9 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                          print("The total packet loss is %s below %s", loss, plConstraint);
                          print("The total latency is %s below %s ", latency, latConstraint);
                          print("The bandwidth of each link in the path is greater than %s ",
-                                 String.valueOf(bandwidthConstraint) + "bps");
+                                 String.valueOf(bandwidthConstraint) + "Mbps");
                          print("The minimum bandwidth which is greater than bandwidth constraint in the path is %s ",
-                                 String.valueOf(finalResultMaxband.get(i)) + "bps");
+                                 String.valueOf(finalResultMaxband.get(i)) + "Mbps");
                          print(pathString(finalResult.get(i), srclink, dstlink));
                      }
                     } else {
@@ -351,8 +353,11 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
 
         @Override
         public Weight weight(TopologyEdge edge) {
+            Short v = edge.link().state() ==
+                    ACTIVE ? (edge.link().type() ==
+                    INDIRECT ? Short.MAX_VALUE : 1) : -1;
+            return new ScalarWeight(v);
 
-            return HOP_DEFAULT_WEIGHT;
         }
 
         @Override
