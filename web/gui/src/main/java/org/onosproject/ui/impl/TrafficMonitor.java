@@ -466,8 +466,8 @@ public class TrafficMonitor extends TrafficMonitorBase {
         if (parentIntent instanceof MMWaveIntent) {
             links = new HashSet<>(links);
             MMWaveIntent h2h = (MMWaveIntent) parentIntent;
-            Host h1 = servicesBundle.hostService().getHost(h2h.one());
-            Host h2 = servicesBundle.hostService().getHost(h2h.two());
+            Host h1 = services.host().getHost(h2h.one());
+            Host h2 = services.host().getHost(h2h.two());
             links.add(createEdgeLink(h1, true));
             links.add(createEdgeLink(h2, true));
         } else if (parentIntent instanceof HostToHostIntent) {

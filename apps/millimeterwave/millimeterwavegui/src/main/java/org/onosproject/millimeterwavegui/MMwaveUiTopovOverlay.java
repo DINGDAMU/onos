@@ -143,9 +143,9 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
             additional.put("Capacity", "default");
         }
         if (link.annotations().value("bandwidth") != null) {
-            additional.put("Bandwidth", link.annotations().value("bandwidth") + "bps");
+            additional.put("Bandwidth", link.annotations().value("bandwidth") + "Mbps");
         } else {
-            additional.put("Bandwidth", "0bps");
+            additional.put("Bandwidth", "0Mbps");
         }
         if (link.annotations().value("mmlatency") != null) {
             additional.put("Latency", link.annotations().value("mmlatency") + "ms");

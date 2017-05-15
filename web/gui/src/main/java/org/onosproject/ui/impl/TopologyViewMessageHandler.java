@@ -454,7 +454,7 @@ public class TopologyViewMessageHandler extends TopologyViewMessageHandlerBase {
          //           .constraints(constraints)
                     .build();
 
-            intentService.submit(intent);
+            services.intent().submit(intent);
             if (overlayCache.isActive(TrafficOverlay.TRAFFIC_ID)) {
                 traffic.monitor(intent);
             }
