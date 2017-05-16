@@ -28,6 +28,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 import static org.onosproject.net.AnnotationKeys.LATENCY;
+import static org.onosproject.net.AnnotationKeys.getAnnotatedValue;
 
 /**
  * Constraint that evaluates the latency through a path.
@@ -63,13 +64,7 @@ public class LatencyConstraint implements Constraint {
 
     private double cost(Link link) {
         if (link.src().elementId() instanceof DeviceId && link.dst().elementId() instanceof DeviceId) {
-            String v = link.annotations().value(LATENCY);
-            StringBuilder sb = new StringBuilder(v);
-
-                StringBuilder sbFront = getFront(sb);
-                StringBuilder sbEnd   = getEnd(sb);
-                String lat = sbFront.append(".").append(sbEnd).toString();
-                return Double.parseDouble(lat);
+            return getAnnotatedValue(link, LATENCY);
         } else {
             return 0;
         }
@@ -84,7 +79,7 @@ public class LatencyConstraint implements Constraint {
 
     private boolean validate(Path path) {
         double pathLatency = path.links().stream().mapToDouble(this::cost).sum();
-        return Duration.of((long) pathLatency, ChronoUnit.MICROS).compareTo(latency) <= 0;
+        return Duration.of((long) pathLatency, ChronoUnit.NANOS).compareTo(latency) <= 0;
     }
 
     @Override
@@ -113,36 +108,5 @@ public class LatencyConstraint implements Constraint {
                 .toString();
     }
 
-    private static StringBuilder getFront(StringBuilder sb) {
 
-        //handle the front
-        StringBuilder strb = new StringBuilder();
-        for (int i = sb.indexOf(".") - 1; i > 0; i--) {
-
-            if (Character.isDigit(sb.charAt(i))) {
-                strb.insert(0, sb.charAt(i));
-            } else {
-                break;
-            }
-        }
-        return strb;
-    }
-
-    private static StringBuilder getEnd(StringBuilder sb) {
-
-        //handle the end
-        StringBuilder strb = new StringBuilder();
-        int i = 0;
-        for (i = sb.indexOf(".") + 1; i > 0; i++) {
-
-            if (Character.isDigit(sb.charAt(i))) {
-                strb.append(sb.charAt(i));
-            } else {
-                break;
-            }
-        }
-        //delete the string
-        sb.delete(0, i);
-        return strb;
-    }
 }
