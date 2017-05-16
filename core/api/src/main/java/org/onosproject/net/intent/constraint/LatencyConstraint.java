@@ -17,7 +17,6 @@ package org.onosproject.net.intent.constraint;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
-import org.apache.commons.collections.DoubleOrderedMap;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
@@ -27,11 +26,8 @@ import org.onosproject.net.intent.ResourceContext;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.onosproject.net.AnnotationKeys.LATENCY;
-import static org.onosproject.net.AnnotationKeys.getAnnotatedValue;
 
 /**
  * Constraint that evaluates the latency through a path.

@@ -25,11 +25,8 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.IntentService;
-import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.PacketLossConstraint;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -52,10 +49,7 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
             multiValued = false)
     String plconstraint = null;
 
-    @Option(name = "-lat", aliases = "--latency",
-            description = "Latency constraint", required = false,
-            multiValued = false)
-    String latconstraint = null;
+
 
 
 
@@ -75,10 +69,7 @@ public class AddmmWaveIntentCommand extends ConnectivityIntentCommand {
         if (!isNullOrEmpty(plconstraint)) {
             constraints.add(new PacketLossConstraint(Double.parseDouble(plconstraint)));
         }
-        if (!isNullOrEmpty(latconstraint)) {
-            long lat = Long.parseLong(latconstraint);
-            constraints.add(new LatencyConstraint(Duration.of(lat, ChronoUnit.MILLIS)));
-        }
+
 
 
         MMWaveIntent intent = MMWaveIntent.builder()

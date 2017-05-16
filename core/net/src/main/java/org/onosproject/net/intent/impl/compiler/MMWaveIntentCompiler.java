@@ -185,16 +185,6 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
 
         FilteredConnectPoint ingressPoint = getFilteredPointFromLink(ingressLink);
         FilteredConnectPoint egressPoint = getFilteredPointFromLink(egressLink);
-
-//        // Try to allocate bandwidth
-//        List<ConnectPoint> pathCPs =
-//                path.links().stream()
-//                        .flatMap(l -> Stream.of(l.src(), l.dst()))
-//                        .collect(Collectors.toList());
-//
-//        // Allocate bandwidth if a bandwidth constraint is set
-//        allocateBandwidth(intent, pathCPs);
-
         TrafficSelector selector = builder(intent.selector())
                 .matchEthSrc(src.mac())
                 .matchEthDst(dst.mac())
