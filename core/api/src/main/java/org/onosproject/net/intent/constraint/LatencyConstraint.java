@@ -17,6 +17,7 @@ package org.onosproject.net.intent.constraint;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
+import org.apache.commons.collections.DoubleOrderedMap;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
@@ -26,6 +27,8 @@ import org.onosproject.net.intent.ResourceContext;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.onosproject.net.AnnotationKeys.LATENCY;
 import static org.onosproject.net.AnnotationKeys.getAnnotatedValue;
@@ -64,7 +67,13 @@ public class LatencyConstraint implements Constraint {
 
     private double cost(Link link) {
         if (link.src().elementId() instanceof DeviceId && link.dst().elementId() instanceof DeviceId) {
-            return getAnnotatedValue(link, LATENCY);
+            String v = link.annotations().value(LATENCY);
+            StringBuilder sb = new StringBuilder(v);
+
+                StringBuilder sbFront = getFront(sb);
+                StringBuilder sbEnd   = getEnd(sb);
+                String lat = sbFront.append(".").append(sbEnd).toString();
+                return Double.parseDouble(lat);
         } else {
             return 0;
         }
@@ -106,5 +115,38 @@ public class LatencyConstraint implements Constraint {
         return MoreObjects.toStringHelper(this)
                 .add("latency", latency)
                 .toString();
+    }
+
+    private static StringBuilder getFront(StringBuilder sb) {
+
+        //handle the front
+        StringBuilder strb = new StringBuilder();
+        for (int i = sb.indexOf(".") - 1; i > 0; i--) {
+
+            if (Character.isDigit(sb.charAt(i))) {
+                strb.insert(0, sb.charAt(i));
+            } else {
+                break;
+            }
+        }
+        return strb;
+    }
+
+    private static StringBuilder getEnd(StringBuilder sb) {
+
+        //handle the end
+        StringBuilder strb = new StringBuilder();
+        int i = 0;
+        for (i = sb.indexOf(".") + 1; i > 0; i++) {
+
+            if (Character.isDigit(sb.charAt(i))) {
+                strb.append(sb.charAt(i));
+            } else {
+                break;
+            }
+        }
+        //delete the string
+        sb.delete(0, i);
+        return strb;
     }
 }

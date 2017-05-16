@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.onosproject.cli.AbstractShellCommand.get;
+import static org.onosproject.net.AnnotationKeys.LATENCY;
 import static org.onosproject.ui.topo.TopoConstants.Properties.FLOWS;
 import static org.onosproject.ui.topo.TopoConstants.Properties.INTENTS;
 import static org.onosproject.ui.topo.TopoConstants.Properties.LATITUDE;
@@ -147,8 +148,16 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
         } else {
             additional.put("Bandwidth", "0Mbps");
         }
-        if (link.annotations().value("mmlatency") != null) {
-            additional.put("Latency", link.annotations().value("mmlatency") + "ms");
+        if (link.annotations().value("latency") != null) {
+            String v = link.annotations().value(LATENCY);
+            StringBuilder sb = new StringBuilder(v);
+
+                StringBuilder sbFront = getFront(sb);
+                StringBuilder sbEnd   = getEnd(sb);
+                if (sbFront.length() > 0 && sbEnd.length() > 0) {
+                    String lat = sbFront.append(".").append(sbEnd).toString();
+                    additional.put("Latency", Double.parseDouble(lat) * 1000 + "ms");
+                }
         } else {
             additional.put("Latency", "0ms");
         }
@@ -160,6 +169,38 @@ public class MMwaveUiTopovOverlay extends UiTopoOverlay {
     public void modifyHostDetails(PropertyPanel pp, HostId hostId) {
 
 
+    }
+    private static StringBuilder getFront(StringBuilder sb) {
+
+    //handle the front
+        StringBuilder strb = new StringBuilder();
+        for (int i = sb.indexOf(".") - 1; i > 0; i--) {
+
+            if (Character.isDigit(sb.charAt(i))) {
+                strb.insert(0, sb.charAt(i));
+            } else {
+                break;
+            }
+        }
+        return strb;
+    }
+
+    private static StringBuilder getEnd(StringBuilder sb) {
+
+    //handle the end
+        StringBuilder strb = new StringBuilder();
+        int i = 0;
+        for (i = sb.indexOf(".") + 1; i > 0; i++) {
+
+            if (Character.isDigit(sb.charAt(i))) {
+                strb.append(sb.charAt(i));
+            } else {
+                break;
+            }
+        }
+    //delete the string
+        sb.delete(0, i);
+        return strb;
     }
 
 
