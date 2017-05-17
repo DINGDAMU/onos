@@ -230,7 +230,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                     double ps = Psuccess.getPs(Double.parseDouble(len));
                     totalPs = totalPs * ps;
                 }
-                String lat = pathlink.annotations().value("mmlatency");
+                String lat = pathlink.annotations().value("latency");
                 if (!isNullOrEmpty(lat)) {
                     double latency = Double.parseDouble(lat);
                     totalLatency = totalLatency + latency;
@@ -260,8 +260,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
                      for (int i = 0; i < finalResult.size(); i++) {
                          String loss = String.valueOf((int) (resultPl.get(i) * 100)) + "%";
                          String plConstraint = String.valueOf(packetlossConstraint * 100) + "%";
-                         String latency = String.valueOf((resultLat.get(i))) + "ms";
-                         String latConstraint = String.valueOf(latencyConstraint) + "ms";
+                         String latency = String.valueOf(resultLat.get(i) / 1000000) + "ms";
+                         String latConstraint = String.valueOf(latencyConstraint / 1000000) + "ms";
                          print("The total packet loss is %s below %s", loss, plConstraint);
                          print("The total latency is %s below %s ", latency, latConstraint);
                          print("The bandwidth of each link in the path is greater than %s ",

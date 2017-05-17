@@ -28,6 +28,7 @@ import org.onlab.graph.KShortestPathsSearch;
 import org.onlab.graph.ScalarWeight;
 import org.onlab.graph.Weight;
 import org.onosproject.common.DefaultTopology;
+import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.DefaultPath;
 import org.onosproject.net.HostId;
 import org.onosproject.net.Path;
@@ -46,7 +47,6 @@ import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.constraint.AsymmetricPathConstraint;
 import org.onosproject.net.intent.IntentExtensionService;
 import org.onosproject.net.intent.impl.PathNotFoundException;
-import org.onosproject.net.resource.ResourceService;
 import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
@@ -58,8 +58,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static org.onosproject.core.CoreService.CORE_PROVIDER_ID;
 import static org.onosproject.net.Link.State.ACTIVE;
 import static org.onosproject.net.Link.Type.EDGE;
 import static org.onosproject.net.Link.Type.INDIRECT;
@@ -77,7 +77,7 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
 
     private static final int ETHERNET_DEFAULT_COST = 101;
     private static final double DEFAULT_HOP_COST = 1.0;
-    private static final double INIFINITY = 999999.0;
+    private static final double INFINITY = 999999.0;
 
 
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
@@ -105,8 +105,7 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
     protected IntentExtensionService intentManager;
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected PathService pathService;
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected ResourceService resourceService;
+
 
 
 
@@ -178,13 +177,19 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
                                               Host src,
                                               Host dst,
                                               MMWaveIntent intent) {
-
-
         Link ingressLink = path.links().get(0);
         Link egressLink = path.links().get(path.links().size() - 1);
 
         FilteredConnectPoint ingressPoint = getFilteredPointFromLink(ingressLink);
         FilteredConnectPoint egressPoint = getFilteredPointFromLink(egressLink);
+        // Try to allocate bandwidth
+        List<ConnectPoint> pathCPs =
+                path.links().stream()
+                        .flatMap(l -> Stream.of(l.src(), l.dst()))
+                        .collect(Collectors.toList());
+        allocateBandwidth(intent, pathCPs);
+
+
         TrafficSelector selector = builder(intent.selector())
                 .matchEthSrc(src.mac())
                 .matchEthDst(dst.mac())
@@ -229,7 +234,7 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
         DefaultTopology.setDefaultGraphPathSearch(KSP);
         DefaultTopology.setDefaultMaxPaths(DEFAULT_MAX_PATHS);
         List<Path> filterCost = new ArrayList<>();
-        double lowestCost = INIFINITY;
+        double lowestCost = INFINITY;
 //        Set<Path> paths = pathService.getPaths(one, two, new MMwaveLinkWeight());
         Set<Path> paths = pathService.getPaths(one, two, new HopCountLinkWeigher());
         final List<Constraint> constraints = intent.constraints();
@@ -252,7 +257,6 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
             }
         }
 
-        //The lowest cost path is at the end of the queue
         return filterCost.iterator().next();
 
     }
@@ -283,17 +287,7 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
             return null;
         }
     }
-    // Converts graphs edge to links
-    private static List<Link> getLinks(org.onlab.graph.Path<TopologyVertex, TopologyEdge> path) {
-        return path.edges().stream().map(TopologyEdge::link)
-                .collect(Collectors.toList());
-    }
-    // Converts graph path to a network path with the same cost.
-    private static org.onosproject.net.Path networkPath(org.onlab.graph.Path<TopologyVertex, TopologyEdge> path) {
-        List<Link> links = path.edges().stream().map(TopologyEdge::link)
-                .collect(Collectors.toList());
-        return new DefaultPath(CORE_PROVIDER_ID, links, path.cost());
-    }
+
     class MMwaveLinkWeight implements LinkWeigher {
 
         @Override

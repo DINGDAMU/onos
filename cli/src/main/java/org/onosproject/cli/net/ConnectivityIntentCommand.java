@@ -190,10 +190,10 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
             required = false, multiValued = false)
     private boolean domains = false;
 
-    @Option(name = "-lat", aliases = "--latency",
-            description = "Latency constraint", required = false,
+    @Option(name = "-l", aliases = "--latency",
+            description = "Max latency in nanoseconds tolerated by the intent", required = false,
             multiValued = false)
-    String latconstraint = null;
+    String latConstraint = null;
 
     // Resource Group
     @Option(name = "-r", aliases = "--resourceGroup", description = "Resource Group Id",
@@ -419,9 +419,14 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
             constraints.add(DomainConstraint.domain());
         }
 
-        if (!isNullOrEmpty(latconstraint)) {
-            long lat = Long.parseLong(latconstraint);
-            constraints.add(new LatencyConstraint(Duration.of(lat, ChronoUnit.NANOS)));
+        if (!isNullOrEmpty(latConstraint)) {
+            try {
+                long lat = Long.parseLong(latConstraint);
+                constraints.add(new LatencyConstraint(Duration.of(lat, ChronoUnit.NANOS)));
+            } catch (NumberFormatException e) {
+                double lat = Double.parseDouble(latConstraint);
+                constraints.add(new LatencyConstraint(Duration.of((long) lat, ChronoUnit.NANOS)));
+            }
         }
         return constraints;
     }
