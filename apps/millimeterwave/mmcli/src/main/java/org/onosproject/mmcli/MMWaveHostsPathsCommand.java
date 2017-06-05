@@ -250,8 +250,8 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             totalLoss = 1 - totalPs;
             // If the path's loss is higher than the constraint, continue.
             // Otherwise put it to the result.
-            if (totalLoss < packetlossConstraint
-                    && totalLatency < latencyConstraint) {
+            if (totalLoss <= packetlossConstraint
+                    && totalLatency <= latencyConstraint) {
                 finalResult.add(result.get(i));
                 finalResultMaxband.add(resultMaxband.get(i));
                 resultPl.add(totalLoss);

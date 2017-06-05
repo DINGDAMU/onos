@@ -51,7 +51,6 @@ import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
 import org.onosproject.net.topology.TopologyVertex;
-import org.onosproject.psuccess.Psuccess;
 import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,7 +78,7 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
 
     private static final int ETHERNET_DEFAULT_COST = 101;
     private static final double DEFAULT_HOP_COST = 1.0;
-    private static final double INFINITY = 999999.0;
+    private static final double INFINITY = 9e100;
 
 
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
@@ -89,6 +88,7 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
     protected double totalLatency = 0.0;
     protected double totalLoss;
     protected double bandwidth;
+    protected double minBand;
     protected int maximumWeightNumber;
     List<Double> resultPl = new ArrayList<>();
     List<Double> resultLat = new ArrayList<>();
@@ -253,28 +253,34 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
             List<Link> pathlinks = filtered.get(i).links();
             totalPs = 1.0;
             totalLatency = 0.0;
+            minBand = INFINITY;
             for (Link pathlink : pathlinks) {
-                String len = pathlink.annotations().value("length");
-                if (!isNullOrEmpty(len)) {
-                    double ps = Psuccess.getPs(Double.parseDouble(len));
-                    totalPs = totalPs * ps;
-                }
-                String lat = pathlink.annotations().value("latency");
-                if (!isNullOrEmpty(lat)) {
-                    double latency = Double.parseDouble(lat);
-                    totalLatency = totalLatency + latency;
-                }
-                String band = pathlink.annotations().value("bandwidth");
-                if (!isNullOrEmpty(band)) {
-                    bandwidth = Double.parseDouble(band);
-                } else {
-                    bandwidth = 0;
+                if (pathlink.type() != EDGE) {
+                    String len = pathlink.annotations().value("length");
+                    if (!isNullOrEmpty(len)) {
+                        double ps = getPs(Double.parseDouble(len));
+                        totalPs = totalPs * ps;
+                    }
+                    String lat = pathlink.annotations().value("latency");
+                    if (!isNullOrEmpty(lat)) {
+                        double latency = Double.parseDouble(lat);
+                        totalLatency = totalLatency + latency;
+                    }
+                    String band = pathlink.annotations().value("bandwidth");
+                    if (!isNullOrEmpty(band)) {
+                        bandwidth = Double.parseDouble(band);
+                    } else {
+                        bandwidth = 0;
+                    }
+                    if (bandwidth < minBand) {
+                        minBand = bandwidth;
+                    }
                 }
             }
             totalLoss = 1 - totalPs;
             resultPl.add(totalLoss);
             resultLat.add(totalLatency);
-            finalResultMaxband.add(bandwidth);
+            finalResultMaxband.add(minBand);
 
         }
         double maxRemainingband = finalResultMaxband.stream().max(Double::compare).get();
