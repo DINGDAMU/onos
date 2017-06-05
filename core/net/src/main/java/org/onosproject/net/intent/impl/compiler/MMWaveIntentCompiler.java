@@ -51,6 +51,7 @@ import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.net.topology.PathService;
 import org.onosproject.net.topology.TopologyEdge;
 import org.onosproject.net.topology.TopologyVertex;
+import org.onosproject.psuccess.Psuccess;
 import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,6 +61,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.onosproject.net.Link.State.ACTIVE;
 import static org.onosproject.net.Link.Type.EDGE;
 import static org.onosproject.net.Link.Type.INDIRECT;
@@ -83,8 +85,14 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
     private static final KShortestPathsSearch<TopologyVertex, TopologyEdge> KSP =
             new KShortestPathsSearch<>();
     private static final int DEFAULT_MAX_PATHS = 10;
-
-
+    protected double totalPs;
+    protected double totalLatency = 0.0;
+    protected double totalLoss;
+    protected double bandwidth;
+    protected int maximumWeightNumber;
+    List<Double> resultPl = new ArrayList<>();
+    List<Double> resultLat = new ArrayList<>();
+    List<Double> finalResultMaxband = new ArrayList<>();
 
     /**
      * Default weight based on ETHERNET default weight.
@@ -233,9 +241,6 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
     protected Path getPath(MMWaveIntent intent, HostId one, HostId two) {
         DefaultTopology.setDefaultGraphPathSearch(KSP);
         DefaultTopology.setDefaultMaxPaths(DEFAULT_MAX_PATHS);
-        List<Path> filterCost = new ArrayList<>();
-        double lowestCost = INFINITY;
-//        Set<Path> paths = pathService.getPaths(one, two, new MMwaveLinkWeight());
         Set<Path> paths = pathService.getPaths(one, two, new HopCountLinkWeigher());
         final List<Constraint> constraints = intent.constraints();
         ImmutableList<Path> filtered = FluentIterable.from(paths)
@@ -244,20 +249,48 @@ public class MMWaveIntentCompiler extends ConnectivityIntentCompiler<MMWaveInten
         if (filtered.isEmpty()) {
             return null;
         }
-        for (Path path : filtered) {
-            double cost = ((ScalarWeight) path.weight()).value();
-            if (cost <  lowestCost) {
-                lowestCost = cost;
+        for (int i = 0; i < filtered.size(); i++) {
+            List<Link> pathlinks = filtered.get(i).links();
+            totalPs = 1.0;
+            totalLatency = 0.0;
+            for (Link pathlink : pathlinks) {
+                String len = pathlink.annotations().value("length");
+                if (!isNullOrEmpty(len)) {
+                    double ps = Psuccess.getPs(Double.parseDouble(len));
+                    totalPs = totalPs * ps;
+                }
+                String lat = pathlink.annotations().value("latency");
+                if (!isNullOrEmpty(lat)) {
+                    double latency = Double.parseDouble(lat);
+                    totalLatency = totalLatency + latency;
+                }
+                String band = pathlink.annotations().value("bandwidth");
+                if (!isNullOrEmpty(band)) {
+                    bandwidth = Double.parseDouble(band);
+                } else {
+                    bandwidth = 0;
+                }
             }
-        }
-        for (Path path : filtered) {
-            double cost = ((ScalarWeight) path.weight()).value();
-            if (cost == lowestCost) {
-                filterCost.add(path);
-            }
-        }
+            totalLoss = 1 - totalPs;
+            resultPl.add(totalLoss);
+            resultLat.add(totalLatency);
+            finalResultMaxband.add(bandwidth);
 
-        return filterCost.iterator().next();
+        }
+        double maxRemainingband = finalResultMaxband.stream().max(Double::compare).get();
+        double maxLatency = resultLat.stream().max(Double::compare).get();
+        double maxPl = resultPl.stream().max(Double::compare).get();
+        double maximumWeight = 0;
+        for (int i = 0; i < filtered.size(); i++) {
+            double weight = finalResultMaxband.get(i) / maxRemainingband +
+                    resultLat.get(i) / maxLatency +
+                    resultPl.get(i) / maxPl;
+            if (weight > maximumWeight) {
+                maximumWeight = weight;
+                maximumWeightNumber = i;
+            }
+        }
+        return filtered.get(maximumWeightNumber);
 
     }
 

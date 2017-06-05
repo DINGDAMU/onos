@@ -130,6 +130,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
     protected double totalLatency = 0.0;
     protected double totalLoss;
     protected double bandwidth;
+    int maximumWeightNumber;
     protected int maxpaths = DEFAULT_MAX_PATHS;
     protected double packetlossConstraint = DEFAULT_PACKET_LOSS_CONSTRAINT;
     protected double latencyConstraint = INFINITY;
@@ -189,6 +190,16 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
         List<Double> resultLat = new ArrayList<>();
         List<Path> finalResult = new ArrayList<>();
         List<Double> finalResultMaxband = new ArrayList<>();
+        List<Double> weightBand = new ArrayList<>();
+        List<Double> weightLatency = new ArrayList<>();
+        List<Double> weightPl = new ArrayList<>();
+        List<Double> totalWeight = new ArrayList<>();
+        double maxRemainingband;
+        double maxLatency;
+        double maxPl;
+
+
+
 
 
         Iterator<Path> it = paths.iterator();
@@ -219,7 +230,7 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             }
             if (count == pathlinks.size()) {
                 result.add(potentialPath);
-                resultMaxband.add(minBand);
+                resultMaxband.add(minBand - bandwidthConstraint);
             }
         }
         for (int i = 0; i < result.size(); i++) {
@@ -257,19 +268,37 @@ public class MMWaveHostsPathsCommand extends AbstractShellCommand {
             } else if (filter) {
                  if (!finalResult.isEmpty()) {
                      print("There are %s paths which satify the requirements", finalResult.size());
+
+                     maxRemainingband = finalResultMaxband.stream().max(Double::compare).get();
+                     maxLatency = resultLat.stream().max(Double::compare).get();
+                     maxPl = resultPl.stream().max(Double::compare).get();
+
+                     double maximumWeight = 0;
                      for (int i = 0; i < finalResult.size(); i++) {
-                         String loss = String.valueOf((int) (resultPl.get(i) * 100)) + "%";
+                         weightBand.add(finalResultMaxband.get(i) / maxRemainingband);
+                         weightLatency.add(resultLat.get(i) / maxLatency);
+                         weightPl.add(resultPl.get(i) / maxPl);
+                         double weight = weightBand.get(i) + weightLatency.get(i) + weightPl.get(i);
+                         totalWeight.add(weight);
+                         if (weight > maximumWeight) {
+                             maximumWeight = weight;
+                             maximumWeightNumber = i;
+                         }
+                     }
+                         String loss = String.valueOf((int) (resultPl.get(maximumWeightNumber) * 100)) + "%";
                          String plConstraint = String.valueOf(packetlossConstraint * 100) + "%";
-                         String latency = String.valueOf(resultLat.get(i) / 1000000) + "ms";
+                         String latency = String.valueOf(resultLat.get(maximumWeightNumber) / 1000000) + "ms";
                          String latConstraint = String.valueOf(latencyConstraint / 1000000) + "ms";
+                         String weightT = String.valueOf(totalWeight.get(maximumWeightNumber));
                          print("The total packet loss is %s below %s", loss, plConstraint);
                          print("The total latency is %s below %s ", latency, latConstraint);
                          print("The bandwidth of each link in the path is greater than %s ",
                                  String.valueOf(bandwidthConstraint) + "Mbps");
-                         print("The minimum bandwidth which is greater than bandwidth constraint in the path is %s ",
-                                 String.valueOf(finalResultMaxband.get(i)) + "Mbps");
-                         print(pathString(finalResult.get(i), srclink, dstlink));
-                     }
+                         print("The minimum remaining bandwidth which is greater than bandwidth " +
+                                         "constraint in the path is %s ",
+                                 String.valueOf(finalResultMaxband.get(maximumWeightNumber)) + "Mbps");
+                         print(pathString(finalResult.get(maximumWeightNumber), srclink, dstlink));
+                         print("The maximum weight is %s", weightT);
                     } else {
                         print("No path meets the requirements!");
                     }

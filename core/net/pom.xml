@@ -130,6 +130,11 @@
             <artifactId>commons-math3</artifactId>
             <version>3.5</version>
         </dependency>
+        <dependency>
+            <groupId>org.onosproject</groupId>
+            <artifactId>psuccess</artifactId>
+            <version>1.10.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
 </project>
